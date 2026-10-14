@@ -192,13 +192,13 @@ const ctx = canvas.getContext('2d');
 const ARMS_ON = LAYOUTS.x;
 const MOVES = movementsOf(ARMS_ON);
 const CLS = {
-  car:   { w: 15, l: 32, v: 150, p: 0.72 },
-  moto:  { w: 7,  l: 17, v: 175, p: 0.12 },
-  bus:   { w: 19, l: 52, v: 105, p: 0.06 },
-  truck: { w: 18, l: 42, v: 110, p: 0.10 }
+  car:   { w: 16, l: 36, v: 150, p: 0.72 },
+  moto:  { w: 8,  l: 18, v: 175, p: 0.12 },
+  bus:   { w: 20, l: 56, v: 105, p: 0.06 },
+  truck: { w: 19, l: 46, v: 110, p: 0.10 }
 };
 const BODY = {
-  car: ['#e6eaee', '#c3cad2', '#8f99a4', '#d9dde2', '#aab3bd'],
+  car: ['#e8ecf0', '#c6ced6', '#8d97a3', '#4a5360', '#dfe3e8', '#2b313a', '#5b7391', '#aab3bd'],
   moto: ['#d5dae0'], bus: ['#bfcad6'], truck: ['#a3adb8']
 };
 let seed = 1234567;
