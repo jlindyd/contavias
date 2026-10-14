@@ -427,6 +427,8 @@ function updateOverlays(dt) {
   for (const key in tgt) sim.ov[key] = lerp(sim.ov[key], tgt[key], k);
 }
 
+window.CV = { sim, posAt, ARMS, ARMS_ON, C, J, L, ARM, CLS, rightOf, t, heroP };
+
 /* ---- main loop ---- */
 let visible = true, last = performance.now(), acc = 0;
 new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe($('.console__scene'));
@@ -445,8 +447,8 @@ function frame(now) {
     updateOverlays(dt);
     if (sim.dirty) paintReadout();
     paintHit();
-    resize();
-    draw();
+    if (window.CV3D && window.CV3D.ready) window.CV3D.render(dt);
+    else { resize(); draw(); }
   }
   requestAnimationFrame(frame);
 }

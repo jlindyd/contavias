@@ -37,6 +37,7 @@
   <section id="demo" data-sc-act="pin" data-sc-span="4.6" data-sc-drift="#0b0e12">
     <div data-sc-stage class="console">
       <div class="console__scene">
+        <canvas id="sim3d" hidden role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
         <canvas id="sim" width="800" height="800" role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
         <div class="scene__tag" data-i18n="sim_tag">Simulação demonstrativa</div>
         <div class="scene__ctl">
@@ -215,6 +216,7 @@
 
 <script src="scrollcraft.js"></script>
 <script src="app.js"></script>
+<script type="module" src="scene3d.js"></script>
 <script>ScrollCraft.mount(document.body);</script>
 </body>
 </html>

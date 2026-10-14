@@ -83,7 +83,8 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   background: #0f1419; border: 1px solid var(--line);
   box-shadow: 0 30px 60px -30px rgba(0, 4, 10, 0.8), 0 1px 0 color-mix(in oklab, white 8%, transparent) inset;
 }
-#sim { display: block; width: 100%; height: 100%; }
+#sim, #sim3d { display: block; width: 100%; height: 100%; }
+[hidden] { display: none !important; }
 .scene__tag {
   position: absolute; left: 12px; top: 12px;
   font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
