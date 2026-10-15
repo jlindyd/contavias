@@ -11,7 +11,7 @@ const T = {
   pt: {
     nav_demo: 'Demonstração', nav_report: 'Relatório', nav_pricing: 'Preços', nav_faq: 'FAQ',
     sim_aria: 'Simulação de um cruzamento com veículos sendo detectados e contados',
-    sim_tag: 'Simulação demonstrativa', btn_raw: 'Vídeo original', btn_cam: 'Câmera', hud_rec: 'CÂM 01', btn_pause: 'Pausar', btn_play: 'Retomar',
+    sim_tag: 'Simulação demonstrativa', btn_raw: 'Vídeo original', btn_zoom: 'Zoom', btn_pause: 'Pausar', btn_play: 'Retomar',
     h1: 'Envie o vídeo. Receba a contagem.',
     h1_sub: 'A IA conta e classifica cada veículo por movimento. Sem hardware, sem integração.',
     cta: 'Iniciar contagem',
@@ -76,7 +76,7 @@ const T = {
   en: {
     nav_demo: 'Demo', nav_report: 'Report', nav_pricing: 'Pricing', nav_faq: 'FAQ',
     sim_aria: 'Simulation of a junction with vehicles being detected and counted',
-    sim_tag: 'Demo simulation', btn_raw: 'Raw video', btn_cam: 'Camera', hud_rec: 'CAM 01', btn_pause: 'Pause', btn_play: 'Resume',
+    sim_tag: 'Demo simulation', btn_raw: 'Raw video', btn_zoom: 'Zoom', btn_pause: 'Pause', btn_play: 'Resume',
     h1: 'Send the video. Get the count.',
     h1_sub: 'AI counts and classifies every vehicle by movement. No hardware, no integration.',
     cta: 'Start a count',
@@ -447,7 +447,7 @@ function frame(now) {
     updateOverlays(dt);
     if (sim.dirty) paintReadout();
     paintHit();
-    paintHud();
+    paintZoomBtn();
     if (window.CV3D && window.CV3D.ready) window.CV3D.render(dt);
     else { resize(); draw(); }
   }
@@ -459,16 +459,9 @@ function applyStageIfChanged() { const s = stageFor(heroP()); if (s !== shownSte
 /* ---- controls ---- */
 const btnRaw = $('#btn-raw'), btnPause = $('#btn-pause');
 btnRaw.addEventListener('click', () => { sim.raw = !sim.raw; btnRaw.setAttribute('aria-pressed', sim.raw); });
-const btnCam = $('#btn-cam'), hud = $('#hud');
-btnCam.addEventListener('click', () => { sim.view = sim.view === 'cctv' ? 'orbit' : 'cctv'; btnCam.setAttribute('aria-pressed', sim.view === 'cctv'); });
-function paintHud() {
-  const on = sim.view === 'cctv' && !sim.raw && !!(window.CV3D && window.CV3D.ready);
-  hud.hidden = !on; btnCam.hidden = !(window.CV3D && window.CV3D.ready);
-  if (!on) return;
-  const sec = 7 * 3600 + 40 * 60 + Math.floor(sim.t);
-  const f = n => String(n).padStart(2, '0');
-  $('#hud-time').textContent = f(Math.floor(sec / 3600) % 24) + ':' + f(Math.floor(sec / 60) % 60) + ':' + f(sec % 60);
-}
+const btnZoom = $('#btn-zoom');
+btnZoom.addEventListener('click', () => { sim.view = sim.view === 'zoom' ? 'orbit' : 'zoom'; btnZoom.setAttribute('aria-pressed', sim.view === 'zoom'); });
+function paintZoomBtn() { btnZoom.hidden = !(window.CV3D && window.CV3D.ready); }
 function paintPause() { btnPause.setAttribute('aria-pressed', sim.paused); btnPause.textContent = sim.paused ? t('btn_play') : t('btn_pause'); }
 btnPause.addEventListener('click', () => { sim.paused = !sim.paused; paintPause(); });
 

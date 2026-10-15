@@ -418,22 +418,8 @@ function init() {
     m.visible = false; m.position.y = 0.09; scene.add(m); return m;
   });
 
-  /* ---------- traffic camera pole ---------- */
-  const CAM_POS = new THREE.Vector3(12.5, 9, 14), CAM_LOOK = new THREE.Vector3(-2.5, 0.8, -3);
-  {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 9, 10), std(0x59626d, { metalness: 0.6, roughness: 0.4 }));
-    pole.position.set(CAM_POS.x, 4.6, CAM_POS.z); pole.castShadow = true; scene.add(pole);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1.6), std(0x59626d, { metalness: 0.6, roughness: 0.4 }));
-    arm.position.set(CAM_POS.x - 0.5, 9, CAM_POS.z - 0.7); arm.rotation.y = 0.5; scene.add(arm);
-    const housing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 1.1), std(0xdde3ea, { roughness: 0.4 }));
-    housing.position.set(CAM_POS.x - 1, 8.7, CAM_POS.z - 1.4); housing.lookAt(CAM_LOOK.x, 6, CAM_LOOK.z); scene.add(housing);
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
-    led.position.set(CAM_POS.x - 1, 8.95, CAM_POS.z - 1.5); scene.add(led);
-  }
-
   /* ---------- camera ---------- */
   const cs = { pitch: 52, yaw: -16, d: 84 };
-  const cctv = { pos: CAM_POS.clone(), look: CAM_LOOK.clone(), fov: 32, mix: 0 };
   const sstep = x => x * x * (3 - 2 * x);
   let PX = 0.0006;
   function render(dt) {
@@ -443,20 +429,15 @@ function init() {
       cam.aspect = w / h; cam.updateProjectionMatrix(); canvas._w = w; canvas._h = h;
       PX = 1 / (1.725 * h); badges.forEach(b => b.scale.set(30 * PX, 30 * PX, 1));
     }
-    const raw = sim.raw, p = CV.heroP(), ov = sim.ov, cc = sim.view === 'cctv' && !raw;
-    const tgt = raw ? { pitch: 88, yaw: 0, d: 150 } : { pitch: 54 - 15 * sstep(Math.min(1, p / 0.55)), yaw: -18 + 42 * p, d: 86 - 14 * p };
+    const raw = sim.raw, p = CV.heroP(), ov = sim.ov, zoom = sim.view === 'zoom' && !raw;
+    const tgt = raw ? { pitch: 88, yaw: 0, d: 150 }
+      : zoom ? { pitch: 38 - 6 * p, yaw: -22 + 30 * p, d: 36 }
+      : { pitch: 54 - 15 * sstep(Math.min(1, p / 0.55)), yaw: -18 + 42 * p, d: 86 - 14 * p };
     const k = 1 - Math.exp(-dt * 2.8);
     cs.pitch += (tgt.pitch - cs.pitch) * k; cs.yaw += (tgt.yaw - cs.yaw) * k; cs.d += (tgt.d - cs.d) * k;
     const ph = cs.pitch * Math.PI / 180, th = cs.yaw * Math.PI / 180;
-    cctv.mix += ((cc ? 1 : 0) - cctv.mix) * (1 - Math.exp(-dt * 3.2));
-    const m = sstep(Math.max(0, Math.min(1, cctv.mix)));
-    // slow drift while in the traffic camera, like a real fixed unit settling
-    const sway = Math.sin(performance.now() / 4200) * 0.35 * m;
-    const ox = cs.d * Math.cos(ph) * Math.sin(th), oy = cs.d * Math.sin(ph), oz = cs.d * Math.cos(ph) * Math.cos(th);
-    cam.position.set(ox + (CAM_POS.x + sway - ox) * m, oy + (CAM_POS.y - oy) * m, oz + (CAM_POS.z - oz) * m);
-    cam.lookAt(CAM_LOOK.x * m, CAM_LOOK.y * m, CAM_LOOK.z * m);
-    const fov = 32 + 20 * m; if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
-    scene.fog.near = 88 - 38 * m; scene.fog.far = 185 - 55 * m;
+    cam.position.set(cs.d * Math.cos(ph) * Math.sin(th), cs.d * Math.sin(ph), cs.d * Math.cos(ph) * Math.cos(th));
+    cam.lookAt(0, zoom ? 0.6 : 0, 0);
 
     for (const a of ARMS_ON) {
       const g = sim.phaseT < sim.GREEN && ARMS_ON[sim.phase] === a;
