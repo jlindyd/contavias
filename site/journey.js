@@ -20,7 +20,7 @@ function init() {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   const scene = new T.Scene();
-  scene.fog = new T.Fog(0xedf0eb, 105, 230);
+  scene.fog = new T.Fog(0xedf0eb, 110, 240);
   const camera = new T.PerspectiveCamera(36, 1, 0.1, 400);
   scene.add(new T.HemisphereLight(0xffffff, 0xc5cfc0, 2.6));
   const sun = new T.DirectionalLight(0xfffaf0, 3);
@@ -30,69 +30,66 @@ function init() {
   scene.add(sun, sun.target);
 
   const world = createWorld(scene);
-  const J = world.junctions;                      // single, t, x
-  const X = DEFS[2].x;
+  const J = world.junctions;                       // x, single road, T, downtown x
 
-  /* ---------- camera director ---------- */
-  const V = {
-    oblique: (jx, m) => ({ look: [jx - (m ? 0 : 15), 0, m ? 14 : 0], pos: [jx - (m ? 0 : 15) + (m ? 30 : 44), m ? 92 : 59, (m ? 14 : 0) + (m ? 70 : 51)] }),
-    monitor: (jx, m) => ({ look: [jx - (m ? 0 : 7), 0, m ? 6 : 0], pos: [jx - (m ? 0 : 7), m ? 150 : 84, (m ? 6 : 0) + 0.1] }),
-    overview: (jx, m) => ({ look: [jx - 10, 0, m ? 10 : 0], pos: [jx + 20, m ? 150 : 118, (m ? 10 : 0) + (m ? 80 : 74)] })
-  };
+  /* ---------- the five steps and their sceneries ---------- */
+  // stage 0 is the hero; stages 1 to 5 are Detectar, Classificar, Rastrear, Contar, Relatorio.
+  const STAGE_AT = [0, 0.08, 0.27, 0.48, 0.69, 0.88];
+  const FOCUS = [0, 0, 1, 2, 3, 3];                // which junction each stage shows
+  const stageOf = p => STAGE_AT.reduce((s, v, i) => (p >= v ? i : s), 0);
+
+  // Every view is a perspective camera at pole height or a little above: what a counting video really looks like.
+  const view = (jx, dx, y, dz, lx, ly, lz, m) => { const k = m ? 1.5 : 1; return { look: [jx + lx, ly, lz], pos: [jx + lx + dx * k, y * (m ? 1.3 : 1), lz + dz * k] }; };
   const stops = m => [
-    { a: 0, b: 0.08, ...V.oblique(X, m) },
-    { a: 0.2, b: 0.36, ...V.monitor(DEFS[0].x, m) },
-    { a: 0.47, b: 0.6, ...V.monitor(DEFS[1].x, m) },
-    { a: 0.72, b: 0.84, ...V.monitor(DEFS[2].x, m) },
-    { a: 1, b: 1, ...V.overview(X, m) }
+    { a: 0, b: 0.06, ...view(DEFS[0].x, 44, 59, 51, -15, 0, 0, m) },        // hero: wide oblique over the first junction
+    { a: 0.15, b: 0.25, ...view(DEFS[0].x, 36, 30, 44, -5, 1.5, 0, m) },     // Detectar
+    { a: 0.35, b: 0.46, ...view(DEFS[1].x, -38, 24, 38, 3, 1.2, 2, m) },     // Classificar, along the single road
+    { a: 0.56, b: 0.67, ...view(DEFS[2].x, 40, 34, 42, -2, 1, -4, m) },      // Rastrear, T junction
+    { a: 0.77, b: 0.86, ...view(DEFS[3].x, -32, 30, 44, 0, 1.4, 0, m) },     // Contar, downtown
+    { a: 1, b: 1, ...view(DEFS[3].x, 26, 92, 76, -4, 0, -6, m) }             // Relatorio: pull back, still oblique
   ];
   const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
   function camAt(p, m) {
     const S = stops(m);
-    if (p <= S[0].b) return { pos: S[0].pos, look: S[0].look, fly: 0 };
+    if (p <= S[0].b) return S[0];
     for (let i = 0; i < S.length - 1; i++) {
       if (p <= S[i + 1].a) {
         const u = ease((p - S[i].b) / (S[i + 1].a - S[i].b)), dx = Math.abs(S[i + 1].look[0] - S[i].look[0]);
         const pos = lerp3(S[i].pos, S[i + 1].pos, u), look = lerp3(S[i].look, S[i + 1].look, u);
-        pos[1] += Math.sin(Math.PI * u) * Math.min(34, 6 + dx * 0.12);
-        return { pos, look, fly: Math.sin(Math.PI * u) };
+        pos[1] += Math.sin(Math.PI * u) * Math.min(40, 6 + dx * 0.16);       // rise over the street between sceneries
+        return { pos, look };
       }
-      if (p <= S[i + 1].b) return { pos: S[i + 1].pos, look: S[i + 1].look, fly: 0 };
+      if (p <= S[i + 1].b) return S[i + 1];
     }
-    const L = S[S.length - 1]; return { pos: L.pos, look: L.look, fly: 0 };
+    return S[S.length - 1];
   }
 
-  /* ---------- copy, HUD, chapters ---------- */
-  const STAGE_AT = [0, 0.12, 0.4, 0.65, 0.88];
-  const stageOf = p => STAGE_AT.reduce((s, v, i) => (p >= v ? i : s), 0);
-  const copyKeys = [['jr_h0', 'jr_p0'], ['jr_h1', 'jr_p1'], ['jr_h2', 'jr_p2'], ['jr_h3', 'jr_p3'], ['jr_h4', 'jr_p4']];
+  /* ---------- copy, chapters, report panel ---------- */
   const chapters = [...document.querySelectorAll('[data-stop]')];
-  const stopMid = [0.28, 0.535, 0.78];
+  const stopMid = [0.2, 0.41, 0.62, 0.81, 0.96];
   const scrollToP = p => { const top = demo.offsetTop, span = demo.offsetHeight - innerHeight; scrollTo({ top: top + p * span, behavior: reduced ? 'instant' : 'smooth' }); };
   chapters.forEach((b, i) => b.addEventListener('click', () => scrollToP(stopMid[i])));
   let stage = -1, focus = -1, hudSig = '';
   function paintCopy() {
-    const k = copyKeys[Math.max(0, stage)];
-    $('jr-h').innerHTML = t(k[0]); $('jr-p').textContent = t(k[1]);
-    $('jr-cta').hidden = stage > 0;
-    chapters.forEach((b, i) => { const on = stage === i + 1; b.classList.toggle('active', on); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    const s = Math.max(0, stage);
+    $('jr-h').innerHTML = t('jr_h' + s); $('jr-p').textContent = t('jr_p' + s);
+    $('jr-cta').hidden = s > 0;
+    chapters.forEach((b, i) => { const on = s === i + 1; b.classList.toggle('active', on); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   }
-  const letters = j => Object.values(LETTER).sort().filter(l => j.def.arms.some(a => LETTER[a] === l));
+  const lettersOf = j => ['A', 'B', 'C', 'D'].filter(l => j.def.arms.some(a => LETTER[a] === l));
   function buildHud(j) {
-    const ls = letters(j);
+    const ls = lettersOf(j);
     $('hud-mx').innerHTML = '<tr><th></th>' + ls.map(l => `<th scope="col">${l}</th>`).join('') + '</tr>' +
       ls.map(f => `<tr><th scope="row">${f}</th>` + ls.map(o => (f === o ? '<td class="self">·</td>' : `<td data-mv="${f}>${o}">0</td>`)).join('') + '</tr>').join('');
     $('hud-name').textContent = t('t_' + j.def.id);
-    const tier = CV.TIERS.find(z => z.id === j.def.id);
-    $('hud-old').textContent = CV.money(tier.old); $('hud-price').textContent = CV.money(tier.now);
-    $('hud-buy').href = tier.url;
-    $('hud-mvn').textContent = `${j.def.arms.length * (j.def.arms.length - 1)} ${t('pr_mv')}`;
+    $('hud-cls').innerHTML = vehicleTypes.map((v, i) => `<div><dd data-ty="${i}">0</dd><dt>${t('vt' + i)}</dt></div>`).join('');
   }
-  function paintHud(j, time) {
+  function paintHud(j) {
     const sig = j.total + ':' + (j.feed[0] ? j.feed[0].t : 0);
     if (sig !== hudSig) {
       hudSig = sig; $('hud-total').textContent = j.total;
       for (const td of $('hud-mx').querySelectorAll('[data-mv]')) td.textContent = j.counts[td.dataset.mv] || 0;
+      for (const dd of $('hud-cls').querySelectorAll('[data-ty]')) dd.textContent = j.types[dd.dataset.ty];
       $('hud-feed').innerHTML = j.feed.slice(0, 3).map(f => `<li><b>+1</b> ${t('vt' + f.type)} <span>${f.mv.replace('>', ' → ')}</span></li>`).join('');
     }
     const live = j.feed[0] && j.time - j.feed[0].t < 0.9 ? j.feed[0].mv : '';
@@ -114,14 +111,20 @@ function init() {
   paintPause();
 
   let width = 0, height = 0;
-  function resize() { width = innerWidth; height = innerHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }
+  function resize() {
+    width = innerWidth; height = innerHeight; renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    // on wide screens, push the scene toward the free area between the copy and the report panel
+    if (width >= 900) camera.setViewOffset(width, height, -width * 0.06, 0, width, height); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
   addEventListener('resize', resize); resize();
   let visible = true;
   new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe(demo);
 
   /* ---------- loop ---------- */
   let last = performance.now(), time = 0, ps = 0;
-  const ov = { box: 0, trail: 0, gate: 0 };
+  const ov = { box: 0, cls: 0, trail: 0, gate: 0 };
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -136,7 +139,8 @@ function init() {
     camera.position.set(c.pos[0], c.pos[1], c.pos[2]); camera.lookAt(c.look[0], c.look[1], c.look[2]);
     sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
 
-    ov.box = smooth((ps - 0.05) / 0.08); ov.trail = smooth((ps - 0.09) / 0.1); ov.gate = smooth((ps - 0.12) / 0.08);
+    // one layer per step: boxes, then classes, then trails, then the count gates
+    ov.box = smooth((ps - 0.1) / 0.05); ov.cls = smooth((ps - 0.31) / 0.05); ov.trail = smooth((ps - 0.5) / 0.05); ov.gate = smooth((ps - 0.7) / 0.05);
     world.setOverlays(ov);
     for (const j of J) {
       j.group.visible = Math.abs(c.look[0] - j.def.x) < 175;
@@ -145,35 +149,34 @@ function init() {
 
     const s = stageOf(ps);
     if (s !== stage) { stage = s; paintCopy(); }
-    const f = ps < 0.12 || ps >= 0.9 ? -1 : s === 1 ? 0 : s === 2 ? 1 : 2;
+    const f = FOCUS[s];
     if (f !== focus) {
       focus = f; hudSig = '';
-      $('hud').hidden = f < 0;
-      if (f >= 0) buildHud(J[f]);
+      const j = J[f];
+      if (s > 0 && !j.started) { j.started = true; j.reset(); }                // each scenery starts counting when you arrive
+      buildHud(j);
     }
-    const monitor = Math.abs(c.pos[2] - c.look[2]) < 12 && c.fly < 0.2;
-    $('view').textContent = t(monitor ? 'jr_viewmon' : 'jr_view3d');
-    $('journey').classList.toggle('is-monitor', monitor);
-    if (focus >= 0) paintHud(J[focus], time);
+    $('hud').hidden = s < 1;
+    $('view').textContent = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
+    if (s >= 1) paintHud(J[focus]);
 
-    // vehicle labels, kept off the copy column and the HUD
-    const lj = focus >= 0 ? J[focus] : J[2];
-    const x0 = m ? width * 0.06 : width * (focus >= 0 ? 0.4 : 0.43), x1 = width - (m ? 14 : focus >= 0 ? width * 0.3 : 20);
+    // vehicle labels, kept clear of the copy column and the report panel
+    const lj = J[focus];
+    const x0 = m ? width * 0.06 : width * 0.42, x1 = width - (m ? 14 : s >= 1 ? width * 0.31 : 20);
     const y0 = m ? height * 0.42 : 150, y1 = height - (m ? 190 : 150);
     let shown = 0;
     for (const [car, el] of labelEls) if (!lj.cars.includes(car)) el.hidden = true;
     for (const car of lj.cars) {
-      const el = labelFor(car), flash = ps > 0.14 && lj.time - car.flash < 1.25;
+      const el = labelFor(car), flash = ov.gate > 0.5 && lj.time - car.flash < 1.25;
       if (!car.active || ov.box < 0.5 || shown >= (m ? 4 : 9) || !lj.group.visible) { el.hidden = true; continue; }
       car.group.getWorldPosition(v3); v3.y += car.h + 1; v3.project(camera);
       const x = (v3.x * 0.5 + 0.5) * width, y = (-v3.y * 0.5 + 0.5) * height;
       if (!(v3.z < 1 && x > x0 && x < x1 && y > y0 && y < y1)) { el.hidden = true; continue; }
       shown++; el.hidden = false; el.classList.toggle('count-label', flash);
-      el.textContent = flash ? `+1 · ${t('vt' + car.type)} · ${movementKey(car).replace('>', ' → ')}` : ps > 0.3 ? `${t('vt' + car.type)} · V${car.id}` : `V${car.id}`;
+      el.textContent = flash ? `+1 · ${t('vt' + car.type)} · ${movementKey(car).replace('>', ' → ')}` : ov.cls > 0.5 ? `${t('vt' + car.type)} · V${car.id}` : `V${car.id}`;
       el.style.left = x + 'px'; el.style.top = y + 'px';
     }
     renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);
 }
-

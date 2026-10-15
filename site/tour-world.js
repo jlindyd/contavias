@@ -5,10 +5,13 @@ import { createTraffic, tick, pose, exitArm, activeArms } from './tour-traffic.j
 
 // Arm numbers match tour-traffic.js; letters match the movement tables on the page.
 export const LETTER = { 3: 'A', 1: 'B', 2: 'C', 0: 'D' };
+// Four sceneries along one street; the five tour steps reuse them (see journey.js).
+// theme.h scales building height, theme.trees is the number of trees per corner.
 export const DEFS = [
-  { id: 'single', x: 0,   arms: [3, 1],       groups: [[3, 1]],               types: [0, 1, 0, 3, 0, 2, 1, 4, 0, 1] },
-  { id: 't',      x: 170, arms: [3, 1, 2],    groups: [[1], [3], [2]],        types: [0, 1, 0, 2, 3, 0, 1, 4, 0, 1, 0, 2] },
-  { id: 'x',      x: 340, arms: [3, 1, 0, 2], groups: [[1], [3], [0], [2]],   types: [0, 1, 0, 2, 0, 1, 3, 0, 1, 0, 2, 4, 0, 1, 0, 3, 0, 1] }
+  { id: 'x',      x: 0,   arms: [3, 1, 0, 2], groups: [[1], [3], [0], [2]], types: [0, 1, 0, 2, 0, 1, 3, 0, 1, 0, 2, 4, 0, 1, 0, 3, 0, 1], theme: { h: 1, trees: 3 } },
+  { id: 'single', x: 170, arms: [3, 1],       groups: [[3, 1]],             types: [0, 1, 4, 3, 0, 2, 1, 3, 0, 1, 2, 0],                   theme: { h: 0.75, trees: 3 } },
+  { id: 't',      x: 340, arms: [3, 1, 2],    groups: [[1], [3], [2]],      types: [0, 1, 0, 2, 3, 0, 1, 4, 0, 1, 0, 2],                   theme: { h: 1.2, trees: 2 } },
+  { id: 'x',      x: 510, arms: [3, 1, 0, 2], groups: [[1], [3], [0], [2]], types: [1, 0, 0, 3, 0, 2, 1, 0, 4, 0, 1, 0, 2, 0, 1, 3, 0, 1], theme: { h: 1.8, trees: 1 } }
 ];
 export const movementKey = c => LETTER[c.r] + '>' + LETTER[exitArm(c)];
 export const movementsOf = arms => arms.flatMap(a => arms.filter(b => b !== a).map(b => LETTER[a] + '>' + LETTER[b]));
@@ -53,11 +56,12 @@ function junctionStatic(def) {
   }
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     box(g, 39, 0.4, 39, mats.curb, sx * 31, -0.02, sz * 31); box(g, 35, 0.2, 35, mats.ground, sx * 32, 0.25, sz * 32);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < def.theme.trees; i++) {
       const seed = (sx + 1) * 3 + (sz + 1) * 1.5 + i, tree = makeTree(seed);
       tree.position.set(sx * (17 + i * 11 + (i === 1 ? 1.2 : 0)), 0.3, sz * (22 + (seed % 3 - 1) * 1.4)); g.add(tree);
     }
-    for (let i = 0; i < 2; i++) g.add(makeBuilding(sx * (23 + i * 17), sz * 39, 12, 11, 7 + i * 5 + (sx === sz ? 3 : 0)));
+    for (let i = 0; i < 2; i++) g.add(makeBuilding(sx * (23 + i * 17), sz * 39, 12, 11, (7 + i * 5 + (sx === sz ? 3 : 0)) * def.theme.h));
+    if (def.theme.h > 1.5 && sz === -1) g.add(makeBuilding(sx * 30, -29, 9, 8, sx === 1 ? 38 : 30));   // downtown towers behind the junction
   }
   for (const r of [0, 2]) if (!def.arms.includes(r)) {                      // close the gap where a cross street is missing
     const s = r === 0 ? 1 : -1;
@@ -79,10 +83,11 @@ function junctionStatic(def) {
 
 function streetStatic() {
   const g = new T.Group(), xs = DEFS.map(d => d.x);
-  box(g, 1500, 0.2, 420, mats.ground, 170, -0.4, 0);
-  box(g, 760, 0.13, 20, mats.road, 170, 0, 0);
-  for (let x = -200; x <= 540; x += 6) if (xs.every(j => Math.abs(x - j) >= 15)) box(g, 2.5, 0.02, 0.16, mats.white, x, 0.11, 0);
-  const edges = [-210, ...xs.flatMap(x => [x - 50.5, x + 50.5]), 550];
+  const last = xs[xs.length - 1];
+  box(g, 1900, 0.2, 420, mats.ground, last / 2, -0.4, 0);
+  box(g, last + 440, 0.13, 20, mats.road, last / 2, 0, 0);
+  for (let x = -210; x <= last + 210; x += 6) if (xs.every(j => Math.abs(x - j) >= 15)) box(g, 2.5, 0.02, 0.16, mats.white, x, 0.11, 0);
+  const edges = [-220, ...xs.flatMap(x => [x - 50.5, x + 50.5]), last + 220];
   for (let i = 0; i < edges.length; i += 2) {                                // gaps between the junction blocks
     const a = edges[i], b = edges[i + 1], len = b - a, cx = (a + b) / 2;
     for (const s of [-1, 1]) {
@@ -166,13 +171,14 @@ export function createWorld(scene) {
       return c;
     });
     const J = {
-      def, group, traffic, cars, gates, live, counts: {}, total: 0, feed: [], acc: 0, time: 0,
+      def, group, traffic, cars, gates, live, counts: {}, types: [0, 0, 0, 0, 0], total: 0, feed: [], acc: 0, time: 0, started: false,
+      reset() { J.counts = {}; J.types = [0, 0, 0, 0, 0]; J.total = 0; J.feed = []; },     // counting starts when the visitor arrives
       step(dt) {
         J.acc += dt;
         while (J.acc >= 1 / 60) {
           J.acc -= 1 / 60; J.time += 1 / 60; tick(traffic, 1 / 60);
           for (const c of traffic.events) {
-            const k = movementKey(c); J.counts[k] = (J.counts[k] || 0) + 1; J.total++; c.flash = J.time;
+            const k = movementKey(c); J.counts[k] = (J.counts[k] || 0) + 1; J.total++; J.types[c.type]++; c.flash = J.time;
             J.feed.unshift({ type: c.type, mv: k, t: J.time }); if (J.feed.length > 5) J.feed.pop();
           }
         }
@@ -195,15 +201,17 @@ export function createWorld(scene) {
       }
     };
     for (let i = 0; i < 60 * 45; i++) J.step(1 / 60);          // warm up so traffic is already flowing
-    J.counts = {}; J.total = 0; J.feed = [];                    // the demo counts start from the first visible frame
+    J.reset();
     return J;
   });
 
+  const neutral = new T.Color(0x2b4a48), typeColors = vehicleTypes.map(v => new T.Color(v.color));
   return {
     junctions,
+    // box and trail colours blend from one neutral colour to a colour per vehicle class as classification appears
     setOverlays(ov) {
-      outlineMats.forEach(m => { m.opacity = 0.7 * ov.box; });
-      trailMats.forEach(m => { m.opacity = 0.65 * ov.trail; });
+      outlineMats.forEach((m, i) => { m.opacity = 0.75 * ov.box; m.color.copy(neutral).lerp(typeColors[i], ov.cls); });
+      trailMats.forEach((m, i) => { m.opacity = 0.65 * ov.trail; m.color.copy(neutral).lerp(typeColors[i], ov.cls); });
     }
   };
 }

@@ -54,21 +54,19 @@
         <span class="lbl" data-i18n="hud_live">Contagem ao vivo</span>
         <h2 id="hud-name"></h2>
         <div class="hud__total"><span class="num" id="hud-total">0</span><span data-i18n="hud_total">veículos contados</span></div>
+        <dl class="cls" id="hud-cls"></dl>
         <table class="mx" id="hud-mx"></table>
         <ol class="feed" id="hud-feed"></ol>
-        <div class="hud__buy">
-          <div class="price"><s id="hud-old"></s><strong id="hud-price"></strong></div>
-          <span class="hud__mv" id="hud-mvn"></span>
-          <a class="cta cta--sm" id="hud-buy" href="#" data-i18n="pr_buy">Comprar</a>
-        </div>
       </aside>
 
       <div class="view-label"><span id="view"></span><small data-i18n="demo_tag">Visualização demonstrativa · dados simulados</small></div>
       <div class="dock">
         <nav class="chapters" data-i18n-aria="chapters_aria" aria-label="Tipos de via">
-          <button type="button" data-stop="0" data-i18n="t_single">Via única</button>
-          <button type="button" data-stop="1" data-i18n="t_t">Via em T</button>
-          <button type="button" data-stop="2" data-i18n="t_x">Via em X</button>
+          <button type="button" data-stop="0" data-i18n="st1">Detectar</button>
+          <button type="button" data-stop="1" data-i18n="st2">Classificar</button>
+          <button type="button" data-stop="2" data-i18n="st3">Rastrear</button>
+          <button type="button" data-stop="3" data-i18n="st4">Contar</button>
+          <button type="button" data-stop="4" data-i18n="st5">Relatório</button>
         </nav>
         <button type="button" id="pause" class="pause" aria-pressed="false"></button>
       </div>
