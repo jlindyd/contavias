@@ -122,11 +122,14 @@ function init() {
   const labelFor = c => { let e = labelEls.get(c); if (!e) { e = document.createElement('div'); e.className = 'vehicle-label'; e.style.setProperty('--color', '#' + vehicleTypes[classOf(c.type)].color.toString(16).padStart(6, '0')); $('labels').append(e); labelEls.set(c, e); } return e; };
   const v3 = new T.Vector3();
 
-  /* ---------- controls ---------- */
-  let paused = reduced;
+  /* ---------- motion ---------- */
+  // Everything is frozen while the visitor scrolls. On arriving at a junction the detection layers fade in,
+  // and after a short beat the traffic starts by itself. The hero plays on its own and has a pause button.
+  const BEAT = 900;                                   // ms between arriving and the cars starting to move
+  let heroPaused = reduced, lastRaw = 0, lastMoveT = -1e9, restSince = null, det = 0;
   const pauseBtn = $('pause');
-  function paintPause() { pauseBtn.textContent = t(paused ? 'btn_play' : 'btn_pause'); pauseBtn.setAttribute('aria-pressed', String(paused)); }
-  pauseBtn.addEventListener('click', () => { paused = !paused; paintPause(); });
+  function paintPause() { pauseBtn.textContent = t(heroPaused ? 'btn_play' : 'btn_pause'); pauseBtn.setAttribute('aria-pressed', String(heroPaused)); }
+  pauseBtn.addEventListener('click', () => { heroPaused = !heroPaused; paintPause(); });
   paintPause();
 
   let width = 0, height = 0;
@@ -152,8 +155,18 @@ function init() {
     const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
     ps += (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
-    if (!paused) time += dt;
-    for (const j of J) j.step(paused ? 0 : dt);
+    // is the visitor scrolling, and is the camera resting at a scenery (or at the hero)?
+    const moved = Math.abs(raw - lastRaw) > 0.0004; lastRaw = raw;
+    if (moved) lastMoveT = now;
+    const idle = now - lastMoveT > 350;
+    const S = stops(m), inHero = ps <= S[0].b + 0.002;
+    const atStop = S.some((st, i) => ps >= st.a - (i === S.length - 1 ? 0.03 : 0.002) && ps <= st.b + 0.002);
+    const resting = atStop && idle;
+    if (resting) { if (restSince === null) restSince = now; } else restSince = null;
+    const run = inHero ? (!heroPaused && idle) : (resting && now - restSince > BEAT);       // frozen, then a beat, then moving
+    det += ((resting && !inHero ? 1 : 0) - det) * (1 - Math.exp(-dt * 6));                   // detection layers follow arrival
+    if (run) time += dt;
+    for (const j of J) j.step(run ? dt : 0);
 
     const c = camAt(ps, m);
     camera.position.set(c.pos[0], c.pos[1], c.pos[2]); camera.lookAt(c.look[0], c.look[1], c.look[2]);
@@ -161,11 +174,12 @@ function init() {
 
     // one layer per step: boxes, then classes, then trails, then the count gates
     // boxes and a trail behind every vehicle from the first step; classes, a stronger trail, then the count gates follow
-    ov.box = smooth((ps - 0.1) / 0.05); ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05); ov.trailBoost = smooth((ps - 0.5) / 0.05); ov.gate = smooth((ps - 0.7) / 0.05);
+    // every layer is also multiplied by `det`, so boxes, labels, trails and gates only show while the camera rests at a junction
+    ov.box = smooth((ps - 0.1) / 0.05) * det; ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05) * det; ov.trailBoost = smooth((ps - 0.5) / 0.05) * det; ov.gate = smooth((ps - 0.7) / 0.05) * det;
     world.setOverlays(ov);
     for (const j of J) {
       j.group.visible = Math.abs(c.look[0] - j.def.x) < 175;
-      if (j.group.visible) j.layout(ov, time, paused ? 0 : dt);
+      if (j.group.visible) j.layout(ov, time, run ? dt : 0);
     }
 
     const s = stageOf(ps);
@@ -178,9 +192,10 @@ function init() {
       buildHud(j);
     }
     $('hud').hidden = s < 1;
+    pauseBtn.hidden = s !== 0;                                                               // the hero's own pause control
     const isX = s >= 1 && J[focus].def.id === 'x';
     $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
-    syncVideo(isX && tab === 'video' && !reduced && !paused);
+    syncVideo(isX && tab === 'video' && !reduced && atStop && idle);
     $('view').textContent = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
     if (s >= 1) paintHud(J[focus]);
 

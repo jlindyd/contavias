@@ -144,7 +144,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   .copy h1 { font-size: 2.35rem; margin-bottom: 0.7rem; }
   .copy p { font-size: 0.9rem; max-width: 20rem; }
   .copy__cta { margin-top: 1.1rem; }
-  .hud { top: auto; bottom: 84px; left: 5%; right: 5%; width: auto; padding: 0.7rem 0.9rem; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+  .hud { top: auto; bottom: 84px; left: 5%; right: 5%; width: auto; padding: 0.7rem 0.9rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 0.8rem; }
   .hud .lbl, .mx, .feed, .hint, .tabs, .pane { display: none; }
   .cls { margin: 0; gap: 3px; flex: 1; max-width: 15rem; }
   .cls div { padding: 0.25rem 0; }
