@@ -1,7 +1,7 @@
 import * as T from 'three';
 import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
 import { makeVehicle, makeBuilding, makeTree, vehicleTypes } from './hero-models.js';
-import { createTraffic, tick, pose, exitArm, activeArms } from './tour-traffic.js';
+import { createTraffic, tick, pose, exitArm, activeArms, totalOf } from './tour-traffic.js';
 
 // Arm numbers match tour-traffic.js; letters match the movement tables on the page.
 export const LETTER = { 3: 'A', 1: 'B', 2: 'C', 0: 'D' };
@@ -149,15 +149,68 @@ export function createWorld(scene) {
   scene.add(streetStatic());
   const protos = vehicleTypes.map((v, i) => { const m = makeVehicle(i); return { model: bake(m.group), ...v }; });
   const outlineMats = vehicleTypes.map(v => new T.LineBasicMaterial({ color: v.color, transparent: true, opacity: 0 }));
-  const trailMats = vehicleTypes.map(v => new T.LineBasicMaterial({ color: v.color, transparent: true, opacity: 0 }));
+  const trailMats = vehicleTypes.map(v => new T.MeshBasicMaterial({ color: v.color, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide }));
   const edgeGeo = protos.map(p => new T.EdgesGeometry(new T.BoxGeometry(p.w + 0.18, p.h + 0.18, p.l + 0.2)));
   const orange = new T.MeshBasicMaterial({ color: 0xe56b38, transparent: true, opacity: 0 });
   const TRAIL = 17;
+
+  // Road labelling: a lettered badge on every arm, inbound and outbound arrows on the lanes,
+  // and a guide line for every movement that ends in an arrow at its count line.
+  const INK = new T.Color(0x243234), ORANGE = new T.Color(0xe56b38);
+  const ribbon = (pts, w) => {                                    // flat strip along the movement path so it reads on the road
+    const n = pts.length / 3, pos = [], idx = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1), dx = pts[b * 3] - pts[a * 3], dz = pts[b * 3 + 2] - pts[a * 3 + 2], len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len * w / 2, nz = dx / len * w / 2;
+      pos.push(pts[i * 3] + nx, pts[i * 3 + 1], pts[i * 3 + 2] + nz, pts[i * 3] - nx, pts[i * 3 + 1], pts[i * 3 + 2] - nz);
+      if (i < n - 1) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); return g;
+  };
+  const laneArrowMat = new T.MeshBasicMaterial({ color: 0x243234, transparent: true, opacity: 0, depthWrite: false });
+  const arrowShape = new T.Shape(); arrowShape.moveTo(1.5, 0); arrowShape.lineTo(-1, 1); arrowShape.lineTo(-0.4, 0); arrowShape.lineTo(-1, -1); arrowShape.closePath();
+  const arrowGeo = new T.ShapeGeometry(arrowShape).rotateX(-Math.PI / 2);
+  const badgeMats = {}, badges = [];
+  const badgeMat = letter => badgeMats[letter] ||= (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+    x.fillStyle = '#f7f9f4'; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.fill();
+    x.strokeStyle = '#243234'; x.lineWidth = 7; x.stroke();
+    x.fillStyle = '#243234'; x.font = '700 70px "Geist Mono", ui-monospace, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, 64, 70);
+    const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+    return new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false, fog: false, sizeAttenuation: false, opacity: 0 });
+  })();
+  const flatArrow = (parent, mat, x, z, dx, dz, y, k = 1) => {
+    const m = new T.Mesh(arrowGeo, mat); m.position.set(x, y, z); m.rotation.y = -Math.atan2(dz, dx); m.scale.setScalar(k); parent.add(m); return m;
+  };
+  function roadLabels(group, def) {
+    const guides = new T.Group(), arrows = new T.Group(); group.add(guides, arrows);
+    const sprites = [], items = [];
+    for (const r of def.arms) {
+      const a = r * Math.PI / 2, rot = (x, z) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+      const [ix, iz] = rot(5, 33), [ox, oz] = rot(-5, 33), [di, dj] = rot(0, -1), [do_, dp] = rot(0, 1);
+      flatArrow(arrows, laneArrowMat, ix, iz, di, dj, 0.24, 1.5);               // inbound lane, toward the junction
+      flatArrow(arrows, laneArrowMat, ox, oz, do_, dp, 0.24, 1.5);              // outbound lane, away from it
+      const sp = new T.Sprite(badgeMat(LETTER[r])); const [bx, bz] = rot(0, 26); sp.position.set(bx, 3.4, bz); sp.renderOrder = 5; arrows.add(sp); sprites.push(sp);
+      for (const m of [0, 1, 2]) {
+        const to = (r + (m === 0 ? 2 : m === 1 ? 1 : 3)) % 4;
+        if (!def.arms.includes(to)) continue;
+        const car = { r, m }, end = m === 0 ? 106 : m === 1 ? 92 : 108, pts = [];
+        for (let s = 50; s <= end; s += 1.5) { const p = pose(car, s); pts.push(p.x, 0.23, p.z); }
+        const mat = new T.MeshBasicMaterial({ color: 0x243234, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide });
+        const band = new T.Mesh(ribbon(pts, 0.5), mat); band.frustumCulled = false; guides.add(band);
+        const p = pose(car, end);
+        const head = flatArrow(guides, mat, p.x, p.z, Math.sin(p.angle), Math.cos(p.angle), 0.26, 1.5);
+        items.push({ key: LETTER[r] + '>' + LETTER[to], mat });
+      }
+    }
+    return { guides, arrows, sprites, items };
+  }
 
   const junctions = DEFS.map((def, di) => {
     const group = new T.Group(); group.position.x = def.x; scene.add(group);
     group.add(junctionStatic(def));
     const gates = def.arms.map(r => { const g = new T.Group(); g.rotation.y = r * Math.PI / 2; group.add(g); return box(g, 18, 0.06, 0.18, orange, 0, 0.18, 20); });
+    const labels = roadLabels(group, def); labels.sprites.forEach(s => badges.push(s));
     const specs = def.types.map((type, i) => ({ type, length: vehicleTypes[type].l, id: String(di * 100 + i + 1).padStart(3, '0'), r: def.arms[i % def.arms.length] }));
     const traffic = createTraffic(specs, def.arms, def.groups, 11 + di);
     const live = streetlife(group, def.arms);
@@ -165,9 +218,11 @@ export function createWorld(scene) {
       const p = protos[c.type], g = new T.Group();
       g.add(p.model.clone());
       const outline = new T.LineSegments(edgeGeo[c.type], outlineMats[c.type]); outline.position.y = p.h / 2; g.add(outline);
-      const pos = new Float32Array(TRAIL * 3), geo = new T.BufferGeometry();
-      geo.setAttribute('position', new T.BufferAttribute(pos, 3));
-      const trail = new T.Line(geo, trailMats[c.type]); trail.frustumCulled = false;
+      // the trail is a flat ribbon behind the vehicle; its vertices are rewritten every frame
+      const pos = new Float32Array(TRAIL * 2 * 3), geo = new T.BufferGeometry(), idx = [];
+      for (let k = 0; k < TRAIL - 1; k++) idx.push(k * 2, k * 2 + 1, k * 2 + 2, k * 2 + 1, k * 2 + 3, k * 2 + 2);
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setIndex(idx);
+      const trail = new T.Mesh(geo, trailMats[c.type]); trail.frustumCulled = false;
       g.visible = false; group.add(g); group.add(trail);
       c.group = g; c.trail = trail; c.pos = pos; c.flash = -10; c.h = p.h;
       return c;
@@ -187,6 +242,12 @@ export function createWorld(scene) {
       },
       layout(ov, time) {
         orange.opacity = 0.65 * ov.gate; gates.forEach(g => { g.visible = ov.gate > 0.02; });
+        labels.guides.visible = ov.gate > 0.02; labels.arrows.visible = ov.box > 0.02;
+        const hot = J.feed[0] && J.time - J.feed[0].t < 1.8 ? J.feed[0].mv : '';     // light up the movement that was just counted
+        for (const g of labels.items) {
+          const on = g.key === hot;
+          g.mat.color.copy(on ? ORANGE : INK); g.mat.opacity = (on ? 0.95 : 0.16) * ov.gate;
+        }
         live(traffic, time);
         for (const c of cars) {
           c.group.visible = c.active;
@@ -196,7 +257,15 @@ export function createWorld(scene) {
           c.group.children[1].visible = ov.box > 0.02;
           c.trail.visible = ov.trail > 0.02;
           if (c.trail.visible) {
-            for (let j = 0; j < TRAIL; j++) { const q = pose(c, Math.max(0, c.s - j * 1.1)); c.pos[j * 3] = q.x; c.pos[j * 3 + 1] = 0.23; c.pos[j * 3 + 2] = q.z; }
+            const pts = [];
+            for (let j = 0; j < TRAIL; j++) pts.push(pose(c, Math.max(0, c.s - j * 1.3)));
+            for (let j = 0; j < TRAIL; j++) {
+              const a = pts[Math.max(0, j - 1)], b = pts[Math.min(TRAIL - 1, j + 1)];
+              const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz) || 1, w = 0.28 * (1 - j / (TRAIL * 1.25));   // tapers toward the tail
+              const nx = -dz / len * w, nz = dx / len * w;
+              c.pos[j * 6] = pts[j].x + nx; c.pos[j * 6 + 1] = 0.25; c.pos[j * 6 + 2] = pts[j].z + nz;
+              c.pos[j * 6 + 3] = pts[j].x - nx; c.pos[j * 6 + 4] = 0.25; c.pos[j * 6 + 5] = pts[j].z - nz;
+            }
             c.trail.geometry.attributes.position.needsUpdate = true;
           }
         }
@@ -211,9 +280,13 @@ export function createWorld(scene) {
   return {
     junctions,
     // box and trail colours blend from one neutral colour to a colour per vehicle class as classification appears
+    // badge size is in screen units, so it follows the canvas height
+    setBadgeScale(h) { const s = 42 / (1.725 * h); badges.forEach(b => b.scale.set(s, s, 1)); },
     setOverlays(ov) {
+      laneArrowMat.opacity = 0.5 * ov.box;
+      Object.values(badgeMats).forEach(m => { m.opacity = ov.box; });
       outlineMats.forEach((m, i) => { m.opacity = 0.75 * ov.box; m.color.copy(neutral).lerp(typeColors[i], ov.cls); });
-      trailMats.forEach((m, i) => { m.opacity = 0.65 * ov.trail; m.color.copy(neutral).lerp(typeColors[i], ov.cls); });
+      trailMats.forEach((m, i) => { m.opacity = (0.5 + 0.3 * ov.trailBoost) * ov.trail; m.color.copy(neutral).lerp(typeColors[i], ov.cls); });
     }
   };
 }

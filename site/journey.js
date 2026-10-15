@@ -117,6 +117,7 @@ function init() {
     // on wide screens, push the scene toward the free area between the copy and the report panel
     if (width >= 900) camera.setViewOffset(width, height, -width * 0.06, 0, width, height); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
+    world.setBadgeScale(height);
   }
   addEventListener('resize', resize); resize();
   let visible = true;
@@ -124,7 +125,7 @@ function init() {
 
   /* ---------- loop ---------- */
   let last = performance.now(), time = 0, ps = 0;
-  const ov = { box: 0, cls: 0, trail: 0, gate: 0 };
+  const ov = { box: 0, cls: 0, trail: 0, trailBoost: 0, gate: 0 };
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -140,7 +141,8 @@ function init() {
     sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
 
     // one layer per step: boxes, then classes, then trails, then the count gates
-    ov.box = smooth((ps - 0.1) / 0.05); ov.cls = smooth((ps - 0.31) / 0.05); ov.trail = smooth((ps - 0.5) / 0.05); ov.gate = smooth((ps - 0.7) / 0.05);
+    // boxes and a trail behind every vehicle from the first step; classes, a stronger trail, then the count gates follow
+    ov.box = smooth((ps - 0.1) / 0.05); ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05); ov.trailBoost = smooth((ps - 0.5) / 0.05); ov.gate = smooth((ps - 0.7) / 0.05);
     world.setOverlays(ov);
     for (const j of J) {
       j.group.visible = Math.abs(c.look[0] - j.def.x) < 175;

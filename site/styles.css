@@ -73,7 +73,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 /* ---------- journey (hero + counting monitor) ---------- */
 .journey { background: var(--sc-canvas); }
 .journey canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #edf0eb 0%, #edf0ebee 14%, #edf0ebab 28%, #edf0eb00 50%); }
+.wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #edf0eb 0%, #edf0ebe6 12%, #edf0eb8c 26%, #edf0eb00 40%); }
 .copy { position: absolute; left: var(--sc-gutter); top: 22%; width: min(36%, 31rem); pointer-events: none; }
 .copy h1 { font: 600 clamp(2.4rem, 4.8vw, 4.75rem)/1.04 var(--sc-font-display); letter-spacing: -0.04em; margin: 0 0 1.25rem; text-wrap: balance; }
 .copy h1 em { font-style: normal; color: var(--sc-accent); }
@@ -95,6 +95,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .mx td { width: 2.4rem; height: 1.6rem; text-align: center; border-radius: 4px; background: color-mix(in oklab, var(--sc-ink) 8%, transparent); transition: background-color 500ms var(--sc-ease-out), color 500ms var(--sc-ease-out); }
 .mx td.self { background: transparent; color: color-mix(in oklab, var(--sc-ink) 30%, transparent); }
 .mx td.hit { background: var(--sc-accent); color: #fff; }
+.hint { margin: 0.55rem 0 0; font-size: 0.6875rem; line-height: 1.4; color: var(--sc-ink-soft); }
 .feed { list-style: none; margin: 0.8rem 0 0; padding: 0.7rem 0 0; border-top: 1px solid var(--line); display: grid; gap: 0.3rem; font-size: 0.8125rem; min-height: 4.6rem; }
 .feed li { display: flex; gap: 0.5rem; color: var(--sc-ink); }
 .feed b { color: var(--accent-text); font-family: var(--mono); font-weight: 600; }
@@ -139,7 +140,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   .copy p { font-size: 0.9rem; max-width: 20rem; }
   .copy__cta { margin-top: 1.1rem; }
   .hud { top: auto; bottom: 84px; left: 5%; right: 5%; width: auto; padding: 0.7rem 0.9rem; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
-  .hud .lbl, .mx, .feed { display: none; }
+  .hud .lbl, .mx, .feed, .hint { display: none; }
   .cls { margin: 0; gap: 3px; flex: 1; max-width: 15rem; }
   .cls div { padding: 0.25rem 0; }
   .hud h2 { margin: 0; font-size: 1.05rem; white-space: nowrap; }
