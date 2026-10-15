@@ -1,0 +1,18 @@
+# Deploy only the static site. Everything else in the repo stays out of the upload.
+*
+!vercel.json
+!site
+!site/**
+site/node_modules
+site/node_modules/**
+site/lab
+site/lab/**
+site/hero-preview*
+site/hero-refinement-review.png
+site/hero-traffic*
+site/hero-streetlife.js
+site/update-traffic-preview.mjs
+site/pwsh.log
+site/package.json
+site/package-lock.json
+site/BRIEF.md
