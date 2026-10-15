@@ -74,15 +74,16 @@
 
       <div class="view-label"><span id="view"></span><small data-i18n="demo_tag">Visualização demonstrativa · dados simulados</small></div>
       <div class="dock">
-        <nav class="chapters" data-i18n-aria="chapters_aria" aria-label="Tipos de via">
-          <button type="button" data-stop="0" data-i18n="st1">Detectar</button>
-          <button type="button" data-stop="1" data-i18n="st2">Classificar</button>
-          <button type="button" data-stop="2" data-i18n="st3">Rastrear</button>
-          <button type="button" data-stop="3" data-i18n="st4">Contar</button>
-          <button type="button" data-stop="4" data-i18n="st5">Relatório</button>
-        </nav>
         <button type="button" id="pause" class="pause" aria-pressed="false"></button>
       </div>
+      <nav class="steps" data-i18n-aria="chapters_aria" aria-label="Etapas da contagem">
+        <span class="steps__label" data-i18n="steps_label">Como funciona</span>
+        <button type="button" data-stop="0"><i aria-hidden="true">1</i><span data-i18n="st1">Detectar</span></button>
+        <button type="button" data-stop="1"><i aria-hidden="true">2</i><span data-i18n="st2">Classificar</span></button>
+        <button type="button" data-stop="2"><i aria-hidden="true">3</i><span data-i18n="st3">Rastrear</span></button>
+        <button type="button" data-stop="3"><i aria-hidden="true">4</i><span data-i18n="st4">Contar</span></button>
+        <button type="button" data-stop="4"><i aria-hidden="true">5</i><span data-i18n="st5">Relatório</span></button>
+      </nav>
       <p id="fallback" hidden data-i18n="fallback">Seu navegador não conseguiu iniciar a visualização 3D.</p>
     </div>
   </section>

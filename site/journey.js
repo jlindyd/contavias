@@ -76,7 +76,7 @@ function init() {
     const s = Math.max(0, stage);
     $('jr-h').innerHTML = t('jr_h' + s); $('jr-p').textContent = t('jr_p' + s);
     $('jr-cta').hidden = s > 0;
-    chapters.forEach((b, i) => { const on = s === i + 1; b.classList.toggle('active', on); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    chapters.forEach((b, i) => { const on = s === i + 1; b.classList.toggle('active', on); b.classList.toggle('done', s > i + 1); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   }
   const lettersOf = j => ['A', 'B', 'C', 'D'].filter(l => j.def.arms.some(a => LETTER[a] === l));
   function buildHud(j) {
@@ -202,7 +202,7 @@ function init() {
     // vehicle labels, kept clear of the copy column and the report panel
     const lj = J[focus];
     const x0 = m ? width * 0.06 : width * 0.42, x1 = width - (m ? 14 : s >= 1 ? width * 0.31 : 20);
-    const y0 = m ? height * 0.42 : 150, y1 = height - (m ? 190 : 150);
+    const y0 = m ? height * 0.42 : 150, y1 = height - (m ? 150 : 90);
     let shown = 0;
     for (const [car, el] of labelEls) if (!lj.cars.includes(car)) el.hidden = true;
     for (const car of lj.cars) {
