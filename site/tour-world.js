@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
-import { makeVehicle, makeBuilding, makeTree, vehicleTypes } from './hero-models.js';
+import { makeBuilding, makeTree, vehicleTypes } from './hero-models.js';
+import { makeVehicle, animateVehicle, DIMS, setVehicleEnvironment } from './vehicles.js';
 import { createTraffic, tick, pose, exitArm, activeArms, totalOf } from './tour-traffic.js';
 
 // Arm numbers match tour-traffic.js; letters match the movement tables on the page.
@@ -19,7 +20,7 @@ export const classOf = type => (type === 1 ? 0 : type);
 export const movementsOf = arms => arms.flatMap(a => arms.filter(b => b !== a).map(b => LETTER[a] + '>' + LETTER[b]));
 
 const M = (c, r = 0.8) => new T.MeshStandardMaterial({ color: c, roughness: r });
-const mats = { road: M(0xc0cac5), white: M(0xf5f6ee), ground: M(0xe6ebe2), curb: M(0xe0e5dc) };
+const mats = { road: M(0xaeb8b5), white: M(0xf5f6ee), ground: M(0xe6ebe2), curb: M(0xe0e5dc) };
 
 function box(parent, w, h, d, m, x = 0, y = 0, z = 0) {
   const me = new T.Mesh(new T.BoxGeometry(w, h, d), m); me.position.set(x, y, z); parent.add(me); return me;
@@ -147,10 +148,9 @@ function streetlife(parent, arms) {
 
 export function createWorld(scene) {
   scene.add(streetStatic());
-  const protos = vehicleTypes.map((v, i) => { const m = makeVehicle(i); return { model: bake(m.group), ...v }; });
   const outlineMats = vehicleTypes.map(v => new T.LineBasicMaterial({ color: v.color, transparent: true, opacity: 0 }));
   const trailMats = vehicleTypes.map(v => new T.MeshBasicMaterial({ color: v.color, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide }));
-  const edgeGeo = protos.map(p => new T.EdgesGeometry(new T.BoxGeometry(p.w + 0.18, p.h + 0.18, p.l + 0.2)));
+  const edgeGeo = DIMS.map(d => new T.EdgesGeometry(new T.BoxGeometry(d.w + 0.2, d.h + 0.2, d.l + 0.2)));
   const orange = new T.MeshBasicMaterial({ color: 0xe56b38, transparent: true, opacity: 0 });
   const TRAIL = 17;
 
@@ -211,20 +211,20 @@ export function createWorld(scene) {
     group.add(junctionStatic(def));
     const gates = def.arms.map(r => { const g = new T.Group(); g.rotation.y = r * Math.PI / 2; group.add(g); return box(g, 18, 0.06, 0.18, orange, 0, 0.18, 20); });
     const labels = roadLabels(group, def); labels.sprites.forEach(s => badges.push(s));
-    const specs = def.types.map((type, i) => ({ type, length: vehicleTypes[type].l, id: String(di * 100 + i + 1).padStart(3, '0'), r: def.arms[i % def.arms.length] }));
+    const specs = def.types.map((type, i) => ({ type, length: DIMS[type].l, id: String(di * 100 + i + 1).padStart(3, '0'), r: def.arms[i % def.arms.length] }));
     const traffic = createTraffic(specs, def.arms, def.groups, 11 + di);
     const live = streetlife(group, def.arms);
-    const cars = traffic.cars.map(c => {
-      const p = protos[c.type], g = new T.Group();
-      g.add(p.model.clone());
-      const outline = new T.LineSegments(edgeGeo[c.type], outlineMats[c.type]); outline.position.y = p.h / 2; g.add(outline);
+    const cars = traffic.cars.map((c, ci) => {
+      const rig = makeVehicle(c.type, di * 37 + ci * 11 + 5), g = new T.Group();
+      g.add(rig.root);
+      const outline = new T.LineSegments(edgeGeo[c.type], outlineMats[c.type]); outline.position.y = DIMS[c.type].h / 2 + 0.1; g.add(outline);
       // the trail is a flat ribbon behind the vehicle; its vertices are rewritten every frame
       const pos = new Float32Array(TRAIL * 2 * 3), geo = new T.BufferGeometry(), idx = [];
       for (let k = 0; k < TRAIL - 1; k++) idx.push(k * 2, k * 2 + 1, k * 2 + 2, k * 2 + 1, k * 2 + 3, k * 2 + 2);
       geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setIndex(idx);
       const trail = new T.Mesh(geo, trailMats[c.type]); trail.frustumCulled = false;
       g.visible = false; group.add(g); group.add(trail);
-      c.group = g; c.trail = trail; c.pos = pos; c.flash = -10; c.h = p.h;
+      c.group = g; c.trail = trail; c.pos = pos; c.flash = -10; c.h = rig.h; c.rig = rig; c.ax = 0;
       return c;
     });
     const J = {
@@ -240,7 +240,7 @@ export function createWorld(scene) {
           }
         }
       },
-      layout(ov, time) {
+      layout(ov, time, dt = 0) {
         orange.opacity = 0.65 * ov.gate; gates.forEach(g => { g.visible = ov.gate > 0.02; });
         labels.guides.visible = ov.gate > 0.02; labels.arrows.visible = ov.box > 0.02;
         const hot = J.feed[0] && J.time - J.feed[0].t < 1.8 ? J.feed[0].mv : '';     // light up the movement that was just counted
@@ -253,8 +253,14 @@ export function createWorld(scene) {
           c.group.visible = c.active;
           if (!c.active) { c.trail.visible = false; continue; }
           const p = pose(c);
-          c.group.position.set(p.x, 0.35, p.z); c.group.rotation.y = p.angle;
+          c.group.position.set(p.x, 0.13, p.z); c.group.rotation.y = p.angle;
           c.group.children[1].visible = ov.box > 0.02;
+          // what the vehicle is doing: curvature for steering and lean, acceleration for brake lights and body dive
+          const p2 = pose(c, c.s + 1); let dth = p2.angle - p.angle; dth = Math.atan2(Math.sin(dth), Math.cos(dth));
+          if (dt > 0) { const a = (c.v - (c._pv ?? c.v)) / dt; c.ax += (a - c.ax) * Math.min(1, dt * 6); }
+          c._pv = c.v;
+          const turning = c.m !== 0 && c.s > 34 && c.s < 63 + (c.m === 1 ? 21 : 37);
+          animateVehicle(c.rig, { speed: c.v, accel: c.ax, kappa: dth, turn: turning ? (c.m === 1 ? -1 : 1) : 0, stopped: c.v < 0.25 }, dt, time);
           c.trail.visible = ov.trail > 0.02;
           if (c.trail.visible) {
             const pts = [];
@@ -279,6 +285,7 @@ export function createWorld(scene) {
   const neutral = new T.Color(0x2b4a48), typeColors = vehicleTypes.map((v, i) => new T.Color(vehicleTypes[classOf(i)].color));   // boxes and trails use the class colour
   return {
     junctions,
+    setEnvironment: setVehicleEnvironment,
     // box and trail colours blend from one neutral colour to a colour per vehicle class as classification appears
     // badge size is in screen units, so it follows the canvas height
     setBadgeScale(h) { const s = 42 / (1.725 * h); badges.forEach(b => b.scale.set(s, s, 1)); },

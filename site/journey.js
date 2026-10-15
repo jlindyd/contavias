@@ -1,6 +1,7 @@
 ﻿import * as T from 'three';
 import { createWorld, DEFS, LETTER, movementKey, classOf } from './tour-world.js';
 import { vehicleTypes } from './hero-models.js';
+import { createEnvironment, setVehicleEnvironment } from './vehicles.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -29,6 +30,7 @@ function init() {
   sun.shadow.normalBias = 0.1; sun.shadow.bias = -0.0002;
   scene.add(sun, sun.target);
 
+  setVehicleEnvironment(createEnvironment(renderer));      // a small daylight sky for paint and glass reflections
   const world = createWorld(scene);
   const J = world.junctions;                       // x, single road, T, downtown x
 
@@ -146,7 +148,7 @@ function init() {
     world.setOverlays(ov);
     for (const j of J) {
       j.group.visible = Math.abs(c.look[0] - j.def.x) < 175;
-      if (j.group.visible) j.layout(ov, time);
+      if (j.group.visible) j.layout(ov, time, paused ? 0 : dt);
     }
 
     const s = stageOf(ps);
