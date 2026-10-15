@@ -1,21 +1,21 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ContaVias · Contagem de veículos por vídeo</title>
 <meta name="description" content="Envie o vídeo do cruzamento e receba a contagem de veículos por movimento em até 48 h. Sem hardware, sem integração.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0e12'/><path d='M9 24l5-16M15 24l5-16M21 24l5-16' stroke='%23ff6a1f' stroke-width='2.6' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23263e3c'/><path d='M9 24l5-16M15 24l5-16M21 24l5-16' stroke='%23ff7a45' stroke-width='2.6' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Archivo:wdth,wght@100,500;100,600;100,700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Archivo:wght@500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="scrollcraft.css">
 <link rel="stylesheet" href="styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body>
 
 <span data-sc-progress></span>
-<div class="sc-grain" aria-hidden="true"></div>
 
 <header class="bar">
   <a class="bar__mark" href="#top" aria-label="ContaVias"><span>Conta</span>Vias<i aria-hidden="true">///</i></a>
@@ -29,56 +29,55 @@
     <button type="button" data-lang="pt" aria-pressed="true">PT</button>
     <button type="button" data-lang="en" aria-pressed="false">EN</button>
   </div>
+  <a class="bar__cta" href="#start" data-i18n="cta">Iniciar contagem</a>
 </header>
 
 <main id="top">
 
-  <!-- 1 · THE CONSOLE (pin). The surface is already running at scroll 0. -->
-  <section id="demo" data-sc-act="pin" data-sc-span="4.6" data-sc-drift="#0b0e12">
-    <div data-sc-stage class="console">
-      <div class="console__scene">
-        <canvas id="sim3d" hidden role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
-        <canvas id="sim" width="800" height="800" role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
-        <div class="scene__tag" data-i18n="sim_tag">Simulação demonstrativa</div>
-        <div class="scene__ctl">
-          <button type="button" id="btn-zoom" aria-pressed="false" hidden data-i18n="btn_zoom">Zoom</button>
-          <button type="button" id="btn-raw" aria-pressed="false" data-i18n="btn_raw">Vídeo original</button>
-          <button type="button" id="btn-pause" aria-pressed="false" data-i18n="btn_pause">Pausar</button>
-        </div>
-      </div>
+  <!-- 1 · JOURNEY (pin): a 3D hero that scroll turns into a counting monitor, junction by junction -->
+  <section id="demo" data-sc-act="pin" data-sc-span="11" data-sc-drift="#edf0eb">
+    <div data-sc-stage id="journey" class="journey">
+      <canvas id="world" role="img" data-i18n-aria="world_aria" aria-label="Cena 3D animada de cruzamentos com veículos sendo detectados e contados"></canvas>
+      <div class="wash"></div>
+      <div id="labels" aria-hidden="true"></div>
 
-      <div class="console__panel">
-        <div class="panel__head">
-          <h1 class="panel__title" data-i18n="h1">Envie o vídeo. Receba a contagem.</h1>
-          <p class="panel__sub" data-i18n="h1_sub">A IA conta e classifica cada veículo por movimento. Sem hardware, sem integração.</p>
+      <div class="copy">
+        <h1 id="jr-h"></h1>
+        <p id="jr-p"></p>
+        <div class="copy__cta" id="jr-cta">
           <a class="cta" href="#start" data-i18n="cta">Iniciar contagem</a>
-        </div>
-
-        <ol class="steps" id="steps">
-          <li data-step="0"><b data-i18n="s0_t">Detectar</b><span data-i18n="s0_d">Cada veículo recebe uma caixa.</span></li>
-          <li data-step="1"><b data-i18n="s1_t">Classificar</b><span data-i18n="s1_d">Carro, moto, ônibus ou caminhão.</span></li>
-          <li data-step="2"><b data-i18n="s2_t">Rastrear</b><span data-i18n="s2_d">Cada veículo é seguido pelo cruzamento.</span></li>
-          <li data-step="3"><b data-i18n="s3_t">Contar</b><span data-i18n="s3_d">Cada saída vira uma contagem por movimento, como A>B.</span></li>
-          <li data-step="4"><b data-i18n="s4_t">Relatório</b><span data-i18n="s4_d">Totais, horário de pico e diagrama de fluxos em até 48 h.*</span></li>
-        </ol>
-
-        <div class="readout">
-          <div class="readout__total">
-            <span class="num" id="total" aria-live="off">0</span>
-            <span data-i18n="r_total">veículos contados</span>
-          </div>
-          <dl class="readout__cls" id="cls"></dl>
-          <div class="matrix-wrap">
-            <div class="matrix-cap" data-i18n="r_matrix">Contagem por movimento</div>
-            <table class="matrix" id="matrix"></table>
-          </div>
+          <span data-i18n="jr_note">Resultado em até 48 h*</span>
         </div>
       </div>
+
+      <aside class="hud" id="hud" hidden>
+        <span class="lbl" data-i18n="hud_live">Contagem ao vivo</span>
+        <h2 id="hud-name"></h2>
+        <div class="hud__total"><span class="num" id="hud-total">0</span><span data-i18n="hud_total">veículos contados</span></div>
+        <table class="mx" id="hud-mx"></table>
+        <ol class="feed" id="hud-feed"></ol>
+        <div class="hud__buy">
+          <div class="price"><s id="hud-old"></s><strong id="hud-price"></strong></div>
+          <span class="hud__mv" id="hud-mvn"></span>
+          <a class="cta cta--sm" id="hud-buy" href="#" data-i18n="pr_buy">Comprar</a>
+        </div>
+      </aside>
+
+      <div class="view-label"><span id="view"></span><small data-i18n="demo_tag">Visualização demonstrativa · dados simulados</small></div>
+      <div class="dock">
+        <nav class="chapters" data-i18n-aria="chapters_aria" aria-label="Tipos de via">
+          <button type="button" data-stop="0" data-i18n="t_single">Via única</button>
+          <button type="button" data-stop="1" data-i18n="t_t">Via em T</button>
+          <button type="button" data-stop="2" data-i18n="t_x">Via em X</button>
+        </nav>
+        <button type="button" id="pause" class="pause" aria-pressed="false"></button>
+      </div>
+      <p id="fallback" hidden data-i18n="fallback">Seu navegador não conseguiu iniciar a visualização 3D.</p>
     </div>
   </section>
 
   <!-- 2 · COMPARE (flow) -->
-  <section class="sc-section compare" data-sc-act="flow" data-sc-drift="#0b0e12">
+  <section class="sc-section compare" data-sc-act="flow" data-sc-drift="#edf0eb">
     <div class="sc-wrap">
       <div class="sc-stack" data-sc-in data-sc-stagger="60">
         <h2 class="sc-display sc-display--lg" data-i18n="c_h">Ainda conta veículos manualmente?</h2>
@@ -92,14 +91,13 @@
     </div>
   </section>
 
-  <!-- 3 · REPORT (flow + reveal) -->
-  <section id="report" class="sc-section report" data-sc-act="flow" data-sc-drift="#0d1116">
+  <!-- 3 · REPORT (flow) -->
+  <section id="report" class="sc-section report" data-sc-act="flow" data-sc-drift="#e7ebe5">
     <div class="sc-wrap">
       <div class="sc-stack" data-sc-in data-sc-stagger="60">
         <h2 class="sc-display sc-display--lg" data-i18n="rp_h">O que você recebe</h2>
         <p class="sc-body" data-i18n="rp_p">Um relatório pronto para decidir. Este exemplo é calculado a partir dos dados da demonstração.</p>
       </div>
-
       <div class="rep" data-sc-in>
         <div class="rep__peak">
           <span class="lbl" data-i18n="rp_peak">Horário de pico</span>
@@ -112,7 +110,7 @@
         </div>
         <div class="rep__flow">
           <span class="lbl" data-i18n="rp_flow">Diagrama de fluxos</span>
-          <svg id="flow" viewBox="0 0 400 400" role="img" data-i18n-aria="rp_flow_aria" aria-label="Diagrama de fluxos: a espessura de cada linha representa o volume do movimento"></svg>
+          <svg id="flow" viewBox="0 0 400 400" role="img" data-i18n-aria="rp_flow_aria" aria-label="Diagrama de fluxos"></svg>
         </div>
         <div class="rep__table">
           <span class="lbl" data-i18n="rp_mov">Total por movimento</span>
@@ -124,13 +122,12 @@
   </section>
 
   <!-- 4 · PRICING (flow, operable) -->
-  <section id="pricing" class="sc-section pricing" data-sc-act="flow" data-sc-drift="#0b0e12">
+  <section id="pricing" class="sc-section pricing" data-sc-act="flow" data-sc-drift="#edf0eb">
     <div class="sc-wrap">
       <div class="sc-stack" data-sc-in data-sc-stagger="60">
         <h2 class="sc-display sc-display--lg" data-i18n="pr_h">Escolha o tipo de via</h2>
         <p class="sc-body" data-i18n="pr_p">O preço segue o número de movimentos que você precisa medir. Escolha uma opção e veja o mapa.</p>
       </div>
-
       <div class="pick" data-sc-in>
         <div class="pick__opts" role="radiogroup" id="tiers" aria-label="Tipo de via"></div>
         <div class="pick__detail">
@@ -144,10 +141,9 @@
             <p class="pick__mv"><span id="mv-n"></span> <span data-i18n="pr_mv">movimentos medidos</span></p>
             <div class="chips" id="mv-chips"></div>
             <ul class="inc" id="inc"></ul>
-            <a class="cta cta--buy" id="buy" href="#" data-i18n="pr_buy">Comprar</a>
+            <a class="cta" id="buy" href="#" data-i18n="pr_buy">Comprar</a>
           </div>
         </div>
-
         <div class="special">
           <h3 data-i18n="sp_h">Via complexa ou especial?</h3>
           <p class="sc-body" data-i18n="sp_p">Rotatórias, contagem de pedestres, relatórios personalizados, formatação própria e white label.</p>
@@ -158,7 +154,7 @@
   </section>
 
   <!-- 5 · AUDIENCE (flow) -->
-  <section class="sc-section who" data-sc-act="flow" data-sc-drift="#0d1116">
+  <section class="sc-section who" data-sc-act="flow" data-sc-drift="#e7ebe5">
     <div class="sc-wrap who__grid">
       <div class="sc-stack" data-sc-in data-sc-stagger="60">
         <h2 class="sc-display sc-display--lg" data-i18n="w_h">Para quem é</h2>
@@ -174,7 +170,7 @@
   </section>
 
   <!-- 6 · FAQ (flow) -->
-  <section id="faq" class="sc-section faq" data-sc-act="flow" data-sc-drift="#0b0e12">
+  <section id="faq" class="sc-section faq" data-sc-act="flow" data-sc-drift="#edf0eb">
     <div class="sc-wrap faq__grid">
       <div class="sc-stack" data-sc-in data-sc-stagger="60">
         <h2 class="sc-display sc-display--lg" data-i18n="f_h">Perguntas frequentes</h2>
@@ -184,24 +180,22 @@
   </section>
 
   <!-- 7 · CLOSE (pin + input). Last element on the page. -->
-  <section id="start" data-sc-act="pin" data-sc-span="1.15" data-sc-drift="#0b0e12">
-    <div data-sc-stage class="close" data-sc-spotlight>
+  <section id="start" data-sc-act="pin" data-sc-span="1.15" data-sc-drift="#e7ebe5">
+    <div data-sc-stage class="close">
       <form class="close__inner" id="start-form" autocomplete="off">
-        <h2 class="sc-display sc-display--lg" data-sc-cue="0.06" data-i18n="x_h">Qual cruzamento você quer contar?</h2>
-        <div class="fields" data-sc-cue="0.06">
+        <h2 class="sc-display sc-display--lg" data-sc-cue="0" data-i18n="x_h">Qual cruzamento você quer contar?</h2>
+        <div class="fields" data-sc-cue="0">
           <label>
             <span data-i18n="x_type">Tipo de via</span>
-            <select id="f-type">
-              <option value="single"></option><option value="t"></option><option value="x"></option><option value="custom"></option>
-            </select>
+            <select id="f-type"><option value="single"></option><option value="t"></option><option value="x"></option><option value="custom"></option></select>
           </label>
           <label>
             <span data-i18n="x_n">Quantos vídeos</span>
             <input id="f-n" type="number" min="1" max="99" value="1" inputmode="numeric">
           </label>
         </div>
-        <button class="cta" type="submit" data-sc-cue="0.06" data-i18n="cta">Iniciar contagem</button>
-        <p class="close__hint" data-sc-cue="0.06" data-i18n="x_hint">Abre uma conversa no WhatsApp com os dados preenchidos.</p>
+        <button class="cta" type="submit" data-sc-cue="0" data-i18n="cta">Iniciar contagem</button>
+        <p class="close__hint" data-sc-cue="0" data-i18n="x_hint">Abre uma conversa no WhatsApp com os dados preenchidos.</p>
       </form>
       <footer class="foot">
         <span class="foot__mark"><span>Conta</span>Vias<i aria-hidden="true">///</i></span>
@@ -217,7 +211,8 @@
 
 <script src="scrollcraft.js"></script>
 <script src="app.js"></script>
-<script type="module" src="scene3d.js"></script>
+<script type="module" src="journey.js"></script>
 <script>ScrollCraft.mount(document.body);</script>
 </body>
 </html>
+
