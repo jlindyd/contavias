@@ -29,3 +29,6 @@ desktop.ini
 site/lab/
 
 .vercel
+
+# the sample video used by the site is intentionally tracked
+!site/assets/*.mp4
