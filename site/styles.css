@@ -279,3 +279,13 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   .scene__ctl { right: 8px; bottom: 8px; }
   .scene__ctl button { min-height: 32px; padding: 0 0.6rem; font-size: 0.6875rem; }
 }
+
+.scene__hud {
+  position: absolute; left: 12px; top: 52px; display: flex; align-items: center; gap: 0.6rem;
+  font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; color: var(--sc-ink);
+  background: color-mix(in oklab, var(--sc-canvas) 78%, transparent); padding: 0.35rem 0.55rem; border-radius: 4px; border: 1px solid var(--line);
+}
+.scene__hud b { width: 7px; height: 7px; border-radius: 50%; background: #e5484d; animation: rec 1.4s steps(2, jump-none) infinite; }
+@keyframes rec { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .scene__hud b { animation: none; } }
+@media (max-width: 900px) { .scene__hud { top: 38px; left: 8px; font-size: 0.5625rem; } }

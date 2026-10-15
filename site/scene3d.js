@@ -169,20 +169,8 @@ function init() {
     }
   }
 
-  /* ---------- trees and lamps ---------- */
+  /* ---------- street lamps ---------- */
   {
-    const spots = [];
-    for (const a of ARMS_ON) { const o = ARMS[a], r = rightOf(o); for (let d = 11; d < 38; d += 6.2) for (const sd of [-1, 1]) spots.push([o[0] * d + r[0] * sd * (half + 1.5), o[1] * d + r[1] * sd * (half + 1.5)]); }
-    const foliage = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.5, 1), std(0x1f3b2c, { roughness: 0.9 }), spots.length);
-    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12, 0.17, 1.5, 6), std(0x2e2420), spots.length);
-    const m4 = new THREE.Matrix4();
-    spots.forEach(([x, z], i) => {
-      const s = 0.8 + rand() * 0.5;
-      m4.compose(new THREE.Vector3(x, 0.28 + 1.5 + s, z), new THREE.Quaternion(), new THREE.Vector3(s, s * 1.1, s)); foliage.setMatrixAt(i, m4);
-      m4.compose(new THREE.Vector3(x, 0.28 + 0.75, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)); trunk.setMatrixAt(i, m4);
-    });
-    foliage.castShadow = true; trunk.castShadow = true; scene.add(foliage, trunk);
-
     const lampPole = std(0x59626d, { metalness: 0.6, roughness: 0.4 }), lampHead = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
     const pool = additive(0xffc98a, 0.22), halo = new THREE.SpriteMaterial({ map: glowTex, color: 0xffd9a0, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
@@ -245,65 +233,159 @@ function init() {
   const glass = new THREE.MeshStandardMaterial({ color: 0x0c1118, roughness: 0.08, metalness: 0.9 });
   const rubber = std(0x0a0c0f, { roughness: 0.9 }), rimMat = std(0x9aa3ad, { metalness: 0.8, roughness: 0.3 });
   const headMat = new THREE.MeshBasicMaterial({ color: 0xfff3dc }), tailMat = new THREE.MeshBasicMaterial({ color: 0xff3b30 });
-  const trim = std(0x1a1f26, { roughness: 0.6 });
+  const amber = new THREE.MeshBasicMaterial({ color: 0xffb347 });
+  const trim = std(0x14181d, { roughness: 0.6 }), chrome = std(0xaab3bd, { metalness: 0.9, roughness: 0.25 });
+  const plate = std(0xf2f4f6, { roughness: 0.5 }), cargoMat = std(0xdde3ea, { roughness: 0.6, metalness: 0.1 }), ribMat = std(0xaeb8c3, { roughness: 0.6 });
   const bodyMats = {};
-  const bodyMat = c => (bodyMats[c] ||= new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.7 }));
-  const H = { car: 1.4, moto: 1.9, bus: 3.6, truck: 3.2 };
+  const bodyMat = c => (bodyMats[c] ||= new THREE.MeshStandardMaterial({ color: c, roughness: 0.28, metalness: 0.72 }));
 
-  const wheelG = r => new THREE.CylinderGeometry(r, r, 0.26, 16).rotateX(Math.PI / 2);
+  const wheelG = r => new THREE.CylinderGeometry(r, r, 0.26, 18).rotateX(Math.PI / 2);
   const rimG = r => new THREE.CylinderGeometry(r * 0.62, r * 0.62, 0.28, 12).rotateX(Math.PI / 2);
-  const WG = { car: [wheelG(0.36), rimG(0.36)], bus: [wheelG(0.52), rimG(0.52)], moto: [wheelG(0.34), rimG(0.34)] };
-  const lampG = new THREE.BoxGeometry(0.08, 0.14, 0.34);
+  const archG = r => new THREE.CylinderGeometry(r * 1.22, r * 1.22, 0.02, 18).rotateX(Math.PI / 2);
+  const WG = { car: [wheelG(0.36), rimG(0.36), archG(0.36)], bus: [wheelG(0.52), rimG(0.52), archG(0.52)], moto: [wheelG(0.34), rimG(0.34), null] };
   const poolMat = additive(0xfff0d0, 0.16), tailPool = additive(0xff3b30, 0.16);
+  const UB = new THREE.BoxGeometry(1, 1, 1);
+  const exhaustG = new THREE.CylinderGeometry(0.09, 0.09, 1.2, 8);
+  const exhaustMotoG = new THREE.CylinderGeometry(0.06, 0.06, 0.9, 8).rotateZ(Math.PI / 2);
+  const ballG = new THREE.SphereGeometry(0.22, 14, 10);
+  const riderMat = std(0x1d242c), helmetMat = std(0xdde3ea, { roughness: 0.3 });
 
-  function mesh(g, m, x, y, z = 0, cast = true) { const me = new THREE.Mesh(g, m); me.position.set(x, y, z); me.castShadow = cast; return me; }
+  function part(g, mat, x, y, z, sx, sy, sz, cast = false) {
+    const m = new THREE.Mesh(UB, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = cast; g.add(m); return m;
+  }
+  function mesh(g, geo, m, x, y, z = 0, cast = true) { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = cast; g.add(me); return me; }
   function wheels(g, ws, l, w, y, xs) {
-    for (const x of xs) for (const s of [-1, 1]) { g.add(mesh(ws[0], rubber, x * l, y, s * (w / 2 - 0.1))); g.add(mesh(ws[1], rimMat, x * l, y, s * (w / 2 - 0.1), false)); }
-  }
-  function lamps(g, l, w, y, kw = 0.32) {
-    for (const s of [-1, 1]) {
-      g.add(mesh(lampG, headMat, l / 2 - 0.02, y, s * w * kw, false));
-      g.add(mesh(lampG, tailMat, -l / 2 + 0.02, y, s * w * kw, false));
+    for (const x of xs) for (const s of [-1, 1]) {
+      mesh(g, ws[0], rubber, x * l, y, s * (w / 2 - 0.1)); mesh(g, ws[1], rimMat, x * l, y, s * (w / 2 - 0.1), false);
+      if (ws[2]) mesh(g, ws[2], trim, x * l, y + 0.03, s * (w / 2 + 0.012), false);
     }
-    const hp = new THREE.Mesh(PLANE, poolMat); hp.scale.set(5, 1, 3); hp.position.set(l / 2 + 2.1, 0.05, 0); g.add(hp);
-    const tp = new THREE.Mesh(PLANE, tailPool); tp.scale.set(1.8, 1, 2.4); tp.position.set(-l / 2 - 0.5, 0.05, 0); g.add(tp);
   }
+  function pools(g, l, kw = 5, kd = 3) {
+    const hp = new THREE.Mesh(PLANE, poolMat); hp.scale.set(kw, 1, kd); hp.position.set(l / 2 + kw * 0.42, 0.05, 0); g.add(hp);
+    const tp = new THREE.Mesh(PLANE, tailPool); tp.scale.set(1.8, 1, kd * 0.8); tp.position.set(-l / 2 - 0.5, 0.05, 0); g.add(tp);
+  }
+  function mirrors(g, mat, x, y, w, k = 1) { for (const s of [-1, 1]) part(g, mat, x, y, s * (w / 2 + 0.1 * k), 0.2 * k, 0.12 * k, 0.1 * k, true); }
+  function doorLines(g, l, w, y, h, xs) {
+    for (const s of [-1, 1]) {
+      for (const x of xs) part(g, trim, x * l, y, s * (w / 2 + 0.015), 0.025, h, 0.02);
+      part(g, trim, 0, y - h * 0.05, s * (w / 2 + 0.015), l * 0.6, 0.02, 0.02);
+      for (const x of [xs[0] + 0.07, xs[xs.length - 1] + 0.07]) part(g, chrome, x * l, y + h * 0.28, s * (w / 2 + 0.03), 0.16, 0.03, 0.03);
+    }
+  }
+  function plates(g, l, y) { part(g, plate, l / 2 + 0.03, y, 0, 0.02, 0.17, 0.42); part(g, plate, -l / 2 - 0.03, y, 0, 0.02, 0.17, 0.42); }
+
+  const TYPES = {
+    sedan:  { tubH: 0.46, pts: [[-0.31, 0], [0.30, 0], [0.17, 0.5], [-0.04, 0.56], [-0.2, 0.5]], roof: [0.26, -0.03], top: 1.4, wipers: true },
+    hatch:  { tubH: 0.46, pts: [[-0.36, 0], [0.28, 0], [0.16, 0.52], [-0.24, 0.58], [-0.36, 0.3]], roof: [0.3, -0.07], top: 1.45, wipers: true },
+    suv:    { tubH: 0.56, pts: [[-0.40, 0], [0.28, 0], [0.18, 0.62], [-0.38, 0.68]], roof: [0.58, -0.1], top: 1.68, rails: true, wipers: true },
+    pickup: { tubH: 0.52, pts: [[0.0, 0], [0.32, 0], [0.22, 0.58], [0.05, 0.64]], roof: [0.26, 0.14], top: 1.62, bed: true, wipers: true },
+    van:    { tubH: 1.05, pts: [[-0.45, 0], [0.30, 0], [0.18, 0.5], [-0.45, 0.5]], roof: [0.9, -0.08], top: 2.0, van: true }
+  };
   const CAR_CACHE = {};
-  function carGeos(l, w) {
-    const key = l + 'x' + w;
-    return CAR_CACHE[key] ||= {
-      tub: slab(l, w, 0.46, 0.55),
-      cabin: profile([[-0.31 * l, 0], [0.30 * l, 0], [0.18 * l, 0.5], [-0.02 * l, 0.58], [-0.2 * l, 0.5]], w * 0.84, 0.05),
-      roof: slab(0.26 * l, w * 0.72, 0.03, 0.3, 0.02)
+  function carGeos(type, l, w) {
+    const t = TYPES[type];
+    return CAR_CACHE[type] ||= {
+      tub: slab(type === 'van' ? l * 0.98 : l, w, t.tubH, type === 'van' ? 0.35 : 0.55),
+      cabin: profile(t.pts.map(([x, y]) => [x * l, y]), w * 0.84, 0.05),
+      roof: slab(t.roof[0] * l, w * 0.72, 0.03, 0.3, 0.02)
     };
   }
-  function makeBody(cls, color, l, w) {
-    const g = new THREE.Group(), mat = bodyMat(color);
-    if (cls === 'car') {
-      const c = carGeos(l, w);
-      g.add(mesh(c.tub, mat, 0, 0.3)); g.add(mesh(c.cabin, glass, 0, 0.84)); g.add(mesh(c.roof, mat, -0.02 * l, 1.4, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.06, 0.1, w * 0.9), trim, l / 2 + 0.01, 0.55, 0, false));
-      wheels(g, WG.car, l, w, 0.36, [0.31, -0.31]); lamps(g, l, w, 0.82);
-    } else if (cls === 'bus') {
-      g.add(mesh(slab(l, w, 2.5, 0.4), mat, 0, 0.5));
-      g.add(mesh(slab(l * 0.97, w * 1.01, 0.95, 0.2, 0.03), glass, 0, 1.55));
-      g.add(mesh(slab(l * 0.5, w * 0.6, 0.25, 0.1, 0.03), trim, -l * 0.1, 3.4));
-      wheels(g, WG.bus, l, w, 0.52, [0.3, -0.3]); lamps(g, l, w, 1.1, 0.36);
-    } else if (cls === 'truck') {
-      g.add(mesh(slab(l * 0.62, w, 2.4, 0.2), std(0xdde3ea, { roughness: 0.6, metalness: 0.1 }), -l * 0.17, 0.62));
-      g.add(mesh(slab(l * 0.28, w * 0.96, 1.6, 0.3), mat, l * 0.34, 0.5));
-      g.add(mesh(slab(0.16, w * 0.8, 0.7, 0.1, 0.03), glass, l * 0.47, 1.55));
-      g.add(mesh(new THREE.BoxGeometry(l * 0.62, 0.1, w * 1.02), trim, -l * 0.17, 0.62, 0, false));
-      wheels(g, WG.bus, l, w, 0.5, [0.4, -0.18, -0.38]); lamps(g, l, w, 0.9, 0.34);
-    } else {
-      g.add(mesh(slab(l * 0.6, 0.34, 0.3, 0.12, 0.05), mat, 0, 0.55));
-      for (const x of [0.38, -0.38]) { g.add(mesh(WG.moto[0], rubber, x * l, 0.34, 0)); g.add(mesh(WG.moto[1], rimMat, x * l, 0.34, 0, false)); }
-      g.add(mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.8, 10), trim, -0.1, 1.18, 0));
-      g.add(mesh(new THREE.SphereGeometry(0.21, 14, 10), std(0xdde3ea), -0.05, 1.78, 0));
-      g.add(mesh(lampG, headMat, l / 2 - 0.05, 0.85, 0, false)); g.add(mesh(lampG, tailMat, -l / 2 + 0.05, 0.8, 0, false));
-      const hp = new THREE.Mesh(PLANE, poolMat); hp.scale.set(4, 1, 2); hp.position.set(l / 2 + 1.6, 0.05, 0); g.add(hp);
+  function makeCar(type, color, l, w) {
+    const g = new THREE.Group(), mat = bodyMat(color), t = TYPES[type], c = carGeos(type, l, w);
+    const tubTop = 0.3 + t.tubH + 0.1, cabH = Math.max(...t.pts.map(p => p[1]));
+    mesh(g, c.tub, mat, 0, 0.3, 0);
+    mesh(g, c.cabin, glass, 0, tubTop, 0);
+    mesh(g, c.roof, mat, t.roof[1] * l, tubTop + cabH, 0);
+    for (const s of [-1, 1]) {                                                                     // pillars
+      part(g, mat, (t.pts[1][0] - 0.1) * l, tubTop + cabH * 0.5, s * w * 0.42, 0.1, cabH * 0.95, 0.05, true);
+      part(g, mat, t.pts[0][0] * l * 0.45 + t.roof[1] * l * 0.5 - 0.15, tubTop + cabH * 0.5, s * w * 0.42, 0.11, cabH * 0.95, 0.05, true);
     }
+    mirrors(g, mat, t.pts[1][0] * l - 0.2, tubTop + 0.05, w);
+    if (t.wipers) part(g, trim, (t.pts[1][0] - 0.07) * l, tubTop + cabH * 0.28, 0, 0.03, 0.03, w * 0.62);
+    if (t.rails) for (const s of [-1, 1]) part(g, trim, t.roof[1] * l, tubTop + cabH + 0.07, s * w * 0.3, t.roof[0] * l * 0.9, 0.05, 0.05);
+    if (type === 'sedan') part(g, mat, -0.18 * l, tubTop + cabH + 0.03, 0, 0.26, 0.07, 0.08);      // shark fin
+    if (t.bed) {                                                                                   // open load bed
+      const bx0 = -0.24 * l, bl = 0.46 * l, by = 0.3 + t.tubH + 0.02;
+      part(g, trim, bx0, by, 0, bl, 0.04, w * 0.94);
+      for (const s of [-1, 1]) part(g, mat, bx0, by + 0.17, s * (w / 2 - 0.05), bl, 0.34, 0.08, true);
+      part(g, mat, bx0 - bl / 2, by + 0.17, 0, 0.08, 0.34, w * 0.94, true);
+    }
+    if (t.van) for (const s of [-1, 1]) {                                                          // side glazing
+      part(g, glass, -0.1 * l, 1.55, s * (w / 2 + 0.01), l * 0.3, 0.38, 0.02);
+      part(g, glass, 0.18 * l, 1.55, s * (w / 2 + 0.01), l * 0.13, 0.38, 0.02);
+    }
+    part(g, trim, l / 2 + 0.01, 0.46, 0, 0.1, 0.24, w * 0.93, true); part(g, trim, -l / 2 - 0.01, 0.46, 0, 0.1, 0.24, w * 0.93, true);
+    part(g, trim, l / 2 + 0.03, 0.72, 0, 0.04, 0.16, w * 0.46);                                    // grille
+    part(g, trim, 0, 0.36, 0, l * 0.62, 0.1, w * 1.01);                                            // side skirt
+    for (const s of [-1, 1]) {
+      part(g, headMat, l / 2 + 0.025, 0.86, s * w * 0.34, 0.05, 0.1, 0.4); part(g, headMat, l / 2 + 0.025, 0.7, s * w * 0.4, 0.05, 0.05, 0.18);
+    }
+    if (type === 'sedan' || type === 'hatch') part(g, tailMat, -l / 2 - 0.03, 0.9, 0, 0.04, 0.09, w * 0.86);   // light bar
+    else for (const s of [-1, 1]) part(g, tailMat, -l / 2 - 0.03, 0.9, s * w * 0.38, 0.04, 0.2, 0.22);
+    doorLines(g, l, w, tubTop - 0.08, 0.36, [-0.1, 0.12]);
+    plates(g, l, 0.52);
+    wheels(g, WG.car, l, w, 0.36, [0.31, -0.31]); pools(g, l);
+    g.userData.h = t.top;
     return g;
+  }
+  function makeBus(color, l, w) {
+    const g = new THREE.Group(), mat = bodyMat(color);
+    mesh(g, slab(l, w, 2.5, 0.4), mat, 0, 0.5);
+    mesh(g, slab(l * 0.97, w * 1.01, 0.95, 0.2, 0.03), glass, 0, 1.55);
+    for (const s of [-1, 1]) for (let i = -4; i <= 4; i++) part(g, mat, i * l * 0.105, 1.97, s * (w / 2 + 0.03), 0.08, 0.95, 0.025);
+    for (const s of [-1, 1]) { part(g, trim, l * 0.38, 1.1, s * (w / 2 + 0.02), 0.04, 1.4, 0.02); part(g, trim, l * 0.27, 1.1, s * (w / 2 + 0.02), 0.04, 1.4, 0.02); }
+    part(g, trim, 0, 0.56, 0, l * 0.98, 0.2, w * 1.02);
+    part(g, amber, l / 2 + 0.03, 2.72, 0, 0.03, 0.26, w * 0.66);                                   // route sign
+    for (const x of [-0.18, 0.1]) part(g, cargoMat, x * l, 3.52, 0, l * 0.18, 0.12, w * 0.56, true);
+    mirrors(g, trim, l / 2 - 0.2, 2.0, w, 1.7);
+    for (const s of [-1, 1]) { part(g, headMat, l / 2 + 0.03, 0.9, s * w * 0.36, 0.05, 0.16, 0.4); part(g, tailMat, -l / 2 - 0.03, 1.0, s * w * 0.36, 0.05, 0.3, 0.3); }
+    part(g, trim, l / 2 + 0.02, 0.62, 0, 0.1, 0.28, w * 0.96); plates(g, l, 0.8);
+    wheels(g, WG.bus, l, w, 0.52, [0.3, -0.3]); pools(g, l, 6, 4);
+    g.userData.h = 3.7; return g;
+  }
+  function makeTruck(color, l, w) {
+    const g = new THREE.Group(), mat = bodyMat(color), cx = -l * 0.17, cl = l * 0.62;
+    mesh(g, slab(cl, w, 2.4, 0.2), cargoMat, cx, 0.62);
+    part(g, trim, cx, 0.62, 0, cl, 0.1, w * 1.02);
+    for (const s of [-1, 1]) for (let i = -4; i <= 4; i++) part(g, ribMat, cx + i * cl * 0.105, 1.85, s * (w / 2 + 0.03), 0.05, 2.1, 0.02);
+    part(g, ribMat, cx - cl / 2 - 0.02, 1.85, 0, 0.02, 2.2, 0.03);
+    mesh(g, slab(l * 0.28, w * 0.96, 1.6, 0.3), mat, l * 0.34, 0.5);
+    mesh(g, slab(0.16, w * 0.8, 0.7, 0.1, 0.03), glass, l * 0.47, 1.55);
+    part(g, trim, l / 2 + 0.03, 0.9, 0, 0.05, 0.4, w * 0.5);
+    part(g, trim, l / 2 + 0.02, 0.5, 0, 0.1, 0.26, w * 0.98);
+    for (const s of [-1, 1]) { part(g, headMat, l / 2 + 0.03, 1.15, s * w * 0.36, 0.05, 0.14, 0.34); part(g, tailMat, -l / 2 - 0.03, 0.85, s * w * 0.4, 0.05, 0.2, 0.26); }
+    mirrors(g, trim, l * 0.38, 1.75, w, 1.7);
+    part(g, amber, l * 0.34, 2.38, 0, 0.18, 0.1, w * 0.7);                                         // roof lamps
+    mesh(g, exhaustG, trim, l * 0.2, 1.7, w * 0.42);
+    for (const s of [-1, 1]) part(g, trim, -l * 0.4, 0.5, s * w * 0.4, 0.04, 0.4, 0.5);          // mud flaps
+    plates(g, l, 0.62);
+    wheels(g, WG.bus, l, w, 0.5, [0.4, -0.18, -0.38]); pools(g, l);
+    g.userData.h = 3.3; return g;
+  }
+  function makeMoto(color, l) {
+    const g = new THREE.Group(), mat = bodyMat(color);
+    part(g, mat, 0, 0.62, 0, l * 0.34, 0.26, 0.34, true);                                          // tank
+    part(g, trim, -l * 0.16, 0.72, 0, l * 0.28, 0.1, 0.3);                                         // seat
+    part(g, mat, l * 0.32, 0.9, 0, l * 0.2, 0.34, 0.36, true);                                     // fairing
+    part(g, glass, l * 0.4, 1.1, 0, 0.03, 0.22, 0.28);                                             // screen
+    for (const x of [0.38, -0.38]) { mesh(g, WG.moto[0], rubber, x * l, 0.34, 0); mesh(g, WG.moto[1], rimMat, x * l, 0.34, 0, false); }
+    part(g, chrome, l * 0.36, 0.55, 0, 0.05, 0.55, 0.05);                                          // fork
+    mesh(g, exhaustMotoG, chrome, -l * 0.2, 0.42, 0.18, false);
+    part(g, riderMat, -0.1, 1.2, 0, 0.3, 0.7, 0.42, true).rotation.z = -0.25;                      // torso
+    for (const s of [-1, 1]) part(g, riderMat, l * 0.12, 1.2, s * 0.26, 0.5, 0.1, 0.1).rotation.z = 0.35;
+    mesh(g, ballG, helmetMat, 0.02, 1.82, 0);
+    part(g, headMat, l / 2 - 0.05, 0.88, 0, 0.04, 0.14, 0.2); part(g, tailMat, -l / 2 + 0.05, 0.8, 0, 0.04, 0.1, 0.18);
+    part(g, plate, -l / 2 + 0.02, 0.62, 0, 0.02, 0.14, 0.3);
+    const hp = new THREE.Mesh(PLANE, poolMat); hp.scale.set(4, 1, 2); hp.position.set(l / 2 + 1.6, 0.05, 0); g.add(hp);
+    g.userData.h = 1.95; return g;
+  }
+  function makeBody(v, l, w) {
+    const color = new THREE.Color(v.color).getHex();
+    if (v.cls === 'car') {
+      const r = Math.random(), type = r < 0.34 ? 'sedan' : r < 0.6 ? 'suv' : r < 0.8 ? 'hatch' : r < 0.9 ? 'pickup' : 'van';
+      return makeCar(type, color, l, w);
+    }
+    return v.cls === 'bus' ? makeBus(color, l, w) : v.cls === 'truck' ? makeTruck(color, l, w) : makeMoto(color, l);
   }
 
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -314,8 +396,8 @@ function init() {
   const TRAIL_N = 34;
 
   function makeVehicle(v) {
-    const d = CLS[v.cls], l = d.l * K, w = d.w * K, h = H[v.cls];
-    const g = makeBody(v.cls, new THREE.Color(v.color).getHex(), l, w);
+    const d = CLS[v.cls], l = d.l * K, w = d.w * K;
+    const g = makeBody(v, l, w), h = g.userData.h;
     const bx = new THREE.Group(); bx.position.y = h / 2 + 0.1; bx.scale.set(l + 0.5, h + 0.2, w + 0.5);
     bx.add(new THREE.LineSegments(boxEdges, boxLine)); bx.add(new THREE.Mesh(unitBox, boxFill)); g.add(bx);
     const sp = new THREE.Sprite(labelMat(v.cls)); sp.scale.set(0.115, 0.0288, 1); sp.position.set(0, h + 1.4, 0); sp.renderOrder = 6; g.add(sp);
@@ -336,8 +418,22 @@ function init() {
     m.visible = false; m.position.y = 0.09; scene.add(m); return m;
   });
 
+  /* ---------- traffic camera pole ---------- */
+  const CAM_POS = new THREE.Vector3(12.5, 9, 14), CAM_LOOK = new THREE.Vector3(-2.5, 0.8, -3);
+  {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 9, 10), std(0x59626d, { metalness: 0.6, roughness: 0.4 }));
+    pole.position.set(CAM_POS.x, 4.6, CAM_POS.z); pole.castShadow = true; scene.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1.6), std(0x59626d, { metalness: 0.6, roughness: 0.4 }));
+    arm.position.set(CAM_POS.x - 0.5, 9, CAM_POS.z - 0.7); arm.rotation.y = 0.5; scene.add(arm);
+    const housing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 1.1), std(0xdde3ea, { roughness: 0.4 }));
+    housing.position.set(CAM_POS.x - 1, 8.7, CAM_POS.z - 1.4); housing.lookAt(CAM_LOOK.x, 6, CAM_LOOK.z); scene.add(housing);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
+    led.position.set(CAM_POS.x - 1, 8.95, CAM_POS.z - 1.5); scene.add(led);
+  }
+
   /* ---------- camera ---------- */
   const cs = { pitch: 52, yaw: -16, d: 84 };
+  const cctv = { pos: CAM_POS.clone(), look: CAM_LOOK.clone(), fov: 32, mix: 0 };
   const sstep = x => x * x * (3 - 2 * x);
   let PX = 0.0006;
   function render(dt) {
@@ -347,13 +443,20 @@ function init() {
       cam.aspect = w / h; cam.updateProjectionMatrix(); canvas._w = w; canvas._h = h;
       PX = 1 / (1.725 * h); badges.forEach(b => b.scale.set(30 * PX, 30 * PX, 1));
     }
-    const raw = sim.raw, p = CV.heroP(), ov = sim.ov;
+    const raw = sim.raw, p = CV.heroP(), ov = sim.ov, cc = sim.view === 'cctv' && !raw;
     const tgt = raw ? { pitch: 88, yaw: 0, d: 150 } : { pitch: 54 - 15 * sstep(Math.min(1, p / 0.55)), yaw: -18 + 42 * p, d: 86 - 14 * p };
     const k = 1 - Math.exp(-dt * 2.8);
     cs.pitch += (tgt.pitch - cs.pitch) * k; cs.yaw += (tgt.yaw - cs.yaw) * k; cs.d += (tgt.d - cs.d) * k;
     const ph = cs.pitch * Math.PI / 180, th = cs.yaw * Math.PI / 180;
-    cam.position.set(cs.d * Math.cos(ph) * Math.sin(th), cs.d * Math.sin(ph), cs.d * Math.cos(ph) * Math.cos(th));
-    cam.lookAt(0, 0, 0);
+    cctv.mix += ((cc ? 1 : 0) - cctv.mix) * (1 - Math.exp(-dt * 3.2));
+    const m = sstep(Math.max(0, Math.min(1, cctv.mix)));
+    // slow drift while in the traffic camera, like a real fixed unit settling
+    const sway = Math.sin(performance.now() / 4200) * 0.35 * m;
+    const ox = cs.d * Math.cos(ph) * Math.sin(th), oy = cs.d * Math.sin(ph), oz = cs.d * Math.cos(ph) * Math.cos(th);
+    cam.position.set(ox + (CAM_POS.x + sway - ox) * m, oy + (CAM_POS.y - oy) * m, oz + (CAM_POS.z - oz) * m);
+    cam.lookAt(CAM_LOOK.x * m, CAM_LOOK.y * m, CAM_LOOK.z * m);
+    const fov = 32 + 20 * m; if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    scene.fog.near = 88 - 38 * m; scene.fog.far = 185 - 55 * m;
 
     for (const a of ARMS_ON) {
       const g = sim.phaseT < sim.GREEN && ARMS_ON[sim.phase] === a;

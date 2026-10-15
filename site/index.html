@@ -40,7 +40,9 @@
         <canvas id="sim3d" hidden role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
         <canvas id="sim" width="800" height="800" role="img" data-i18n-aria="sim_aria" aria-label="Simulação de um cruzamento com veículos sendo detectados e contados"></canvas>
         <div class="scene__tag" data-i18n="sim_tag">Simulação demonstrativa</div>
+        <div class="scene__hud" id="hud" hidden aria-hidden="true"><b></b><span data-i18n="hud_rec">CAM 01</span><span id="hud-time">07:40:00</span></div>
         <div class="scene__ctl">
+          <button type="button" id="btn-cam" aria-pressed="false" hidden data-i18n="btn_cam">Câmera</button>
           <button type="button" id="btn-raw" aria-pressed="false" data-i18n="btn_raw">Vídeo original</button>
           <button type="button" id="btn-pause" aria-pressed="false" data-i18n="btn_pause">Pausar</button>
         </div>
