@@ -98,6 +98,23 @@ function init() {
     for (const td of $('hud-mx').querySelectorAll('.hit')) if (td.dataset.mv !== live) td.classList.remove('hit');
     if (live) { const td = $('hud-mx').querySelector(`[data-mv="${live}"]`); if (td) td.classList.add('hit'); }
   }
+  // Panel tabs: the movement table, or the sample video (only on the X junction scenes, where the footage matches).
+  const video = $('hud-video'), tabBtns = [...document.querySelectorAll('#hud-tabs [data-tab]')];
+  let tab = 'mv', vidPlaying = false;
+  function setTab(name) {
+    tab = name;
+    tabBtns.forEach(b => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    $('pane-mv').hidden = name !== 'mv'; $('pane-video').hidden = name !== 'video';
+  }
+  tabBtns.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  $('hud-tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault(); const n = tab === 'mv' ? 'video' : 'mv'; setTab(n); $('tab-' + n).focus();
+  });
+  function syncVideo(want) {
+    if (want && !vidPlaying) { vidPlaying = true; video.play().catch(() => { vidPlaying = false; }); }
+    else if (!want && vidPlaying) { vidPlaying = false; video.pause(); }
+  }
   addEventListener('cv:lang', () => { stage = -1; focus = -1; hudSig = ''; paintPause(); });
 
   /* ---------- labels ---------- */
@@ -131,7 +148,7 @@ function init() {
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
-    if (!visible) return;
+    if (!visible) { syncVideo(false); return; }
     const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
     ps += (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
@@ -161,6 +178,9 @@ function init() {
       buildHud(j);
     }
     $('hud').hidden = s < 1;
+    const isX = s >= 1 && J[focus].def.id === 'x';
+    $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
+    syncVideo(isX && tab === 'video' && !reduced && !paused);
     $('view').textContent = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
     if (s >= 1) paintHud(J[focus]);
 
