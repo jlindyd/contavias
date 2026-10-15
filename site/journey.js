@@ -1,5 +1,5 @@
 ﻿import * as T from 'three';
-import { createWorld, DEFS, LETTER, movementKey } from './tour-world.js';
+import { createWorld, DEFS, LETTER, movementKey, classOf } from './tour-world.js';
 import { vehicleTypes } from './hero-models.js';
 
 const $ = id => document.getElementById(id);
@@ -82,7 +82,7 @@ function init() {
     $('hud-mx').innerHTML = '<tr><th></th>' + ls.map(l => `<th scope="col">${l}</th>`).join('') + '</tr>' +
       ls.map(f => `<tr><th scope="row">${f}</th>` + ls.map(o => (f === o ? '<td class="self">·</td>' : `<td data-mv="${f}>${o}">0</td>`)).join('') + '</tr>').join('');
     $('hud-name').textContent = t('t_' + j.def.id);
-    $('hud-cls').innerHTML = vehicleTypes.map((v, i) => `<div><dd data-ty="${i}">0</dd><dt>${t('vt' + i)}</dt></div>`).join('');
+    $('hud-cls').innerHTML = [0, 2, 3, 4].map(i => `<div><dd data-ty="${i}">0</dd><dt>${t('vt' + i)}</dt></div>`).join('');   // car, motorcycle, truck, bus
   }
   function paintHud(j) {
     const sig = j.total + ':' + (j.feed[0] ? j.feed[0].t : 0);
@@ -100,7 +100,7 @@ function init() {
 
   /* ---------- labels ---------- */
   const labelEls = new Map();
-  const labelFor = c => { let e = labelEls.get(c); if (!e) { e = document.createElement('div'); e.className = 'vehicle-label'; e.style.setProperty('--color', '#' + vehicleTypes[c.type].color.toString(16).padStart(6, '0')); $('labels').append(e); labelEls.set(c, e); } return e; };
+  const labelFor = c => { let e = labelEls.get(c); if (!e) { e = document.createElement('div'); e.className = 'vehicle-label'; e.style.setProperty('--color', '#' + vehicleTypes[classOf(c.type)].color.toString(16).padStart(6, '0')); $('labels').append(e); labelEls.set(c, e); } return e; };
   const v3 = new T.Vector3();
 
   /* ---------- controls ---------- */
@@ -173,7 +173,8 @@ function init() {
       const x = (v3.x * 0.5 + 0.5) * width, y = (-v3.y * 0.5 + 0.5) * height;
       if (!(v3.z < 1 && x > x0 && x < x1 && y > y0 && y < y1)) { el.hidden = true; continue; }
       shown++; el.hidden = false; el.classList.toggle('count-label', flash);
-      el.textContent = flash ? `+1 · ${t('vt' + car.type)} · ${movementKey(car).replace('>', ' → ')}` : ov.cls > 0.5 ? `${t('vt' + car.type)} · V${car.id}` : `V${car.id}`;
+      const name = t('vt' + classOf(car.type));
+      el.textContent = flash ? `+1 · ${name} · ${movementKey(car).replace('>', ' → ')}` : ov.cls > 0.5 ? `${name} · V${car.id}` : `V${car.id}`;
       el.style.left = x + 'px'; el.style.top = y + 'px';
     }
     renderer.render(scene, camera);

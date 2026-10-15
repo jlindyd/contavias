@@ -99,7 +99,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .feed li { display: flex; gap: 0.5rem; color: var(--sc-ink); }
 .feed b { color: var(--accent-text); font-family: var(--mono); font-weight: 600; }
 .feed span { margin-left: auto; font-family: var(--mono); color: var(--sc-ink-soft); }
-.cls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0.85rem 0 0; }
+.cls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0.85rem 0 0; }
 .cls div { display: flex; flex-direction: column-reverse; align-items: center; gap: 0.15rem; padding: 0.45rem 0.1rem; border-radius: 6px; background: color-mix(in oklab, var(--sc-ink) 6%, transparent); min-width: 0; }
 .cls dd { margin: 0; font: 600 0.9375rem var(--mono); }
 .cls dt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.5625rem; letter-spacing: 0.02em; color: var(--sc-ink-soft); }

@@ -14,6 +14,8 @@ export const DEFS = [
   { id: 'x',      x: 510, arms: [3, 1, 0, 2], groups: [[1], [3], [0], [2]], types: [1, 0, 0, 3, 0, 2, 1, 0, 4, 0, 1, 0, 2, 0, 1, 3, 0, 1], theme: { h: 1.8, trees: 1 } }
 ];
 export const movementKey = c => LETTER[c.r] + '>' + LETTER[exitArm(c)];
+// The SUV is only a different car shape: it is classified and counted as a car.
+export const classOf = type => (type === 1 ? 0 : type);
 export const movementsOf = arms => arms.flatMap(a => arms.filter(b => b !== a).map(b => LETTER[a] + '>' + LETTER[b]));
 
 const M = (c, r = 0.8) => new T.MeshStandardMaterial({ color: c, roughness: r });
@@ -178,8 +180,8 @@ export function createWorld(scene) {
         while (J.acc >= 1 / 60) {
           J.acc -= 1 / 60; J.time += 1 / 60; tick(traffic, 1 / 60);
           for (const c of traffic.events) {
-            const k = movementKey(c); J.counts[k] = (J.counts[k] || 0) + 1; J.total++; J.types[c.type]++; c.flash = J.time;
-            J.feed.unshift({ type: c.type, mv: k, t: J.time }); if (J.feed.length > 5) J.feed.pop();
+            const k = movementKey(c); J.counts[k] = (J.counts[k] || 0) + 1; J.total++; J.types[classOf(c.type)]++; c.flash = J.time;
+            J.feed.unshift({ type: classOf(c.type), mv: k, t: J.time }); if (J.feed.length > 5) J.feed.pop();
           }
         }
       },
@@ -205,7 +207,7 @@ export function createWorld(scene) {
     return J;
   });
 
-  const neutral = new T.Color(0x2b4a48), typeColors = vehicleTypes.map(v => new T.Color(v.color));
+  const neutral = new T.Color(0x2b4a48), typeColors = vehicleTypes.map((v, i) => new T.Color(vehicleTypes[classOf(i)].color));   // boxes and trails use the class colour
   return {
     junctions,
     // box and trail colours blend from one neutral colour to a colour per vehicle class as classification appears
