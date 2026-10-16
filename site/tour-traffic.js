@@ -63,8 +63,8 @@ export function tick(t, dt) {
     if (!c.active) {
       c.m = pickRoute(t, c.r);
       const start = pose(c, 0);
-      if (t.cars.some(o => o !== c && o.active && Math.hypot(pose(o).x - start.x, pose(o).z - start.z) < (o.length + c.length) / 2 + GAP)) continue;
-      c.active = true; c.s = 0; c.v = 0; c.counted = false; c.committed = false; c.released = false; c.lap++;
+      if (t.cars.some(o => o !== c && o.active && Math.hypot(o._p.x - start.x, o._p.z - start.z) < (o.length + c.length) / 2 + GAP)) continue;
+      c.active = true; c.s = 0; c.v = 0; c.counted = false; c.committed = false; c.released = false; c.lap++; c._p = start;
     }
     const total = totalOf(c.m), stop = 78 - STOP - c.length / 2;
     // Cars from the same approach cannot conflict (their routes only diverge), so they may follow each other through.
@@ -75,8 +75,9 @@ export function tick(t, dt) {
     const remaining = Math.max(0, limit - c.s), desired = Math.min(c.m === 0 ? 7 : c.m === 1 ? 6 : 5.5, Math.sqrt(2 * 2.8 * remaining));
     c.v = Math.max(0, Math.min(desired, c.v + 1.8 * dt));
     const next = Math.min(limit, c.s + c.v * dt), p = pose(c, next);
-    const blocked = t.cars.some(o => o !== c && o.active && Math.hypot(p.x - pose(o).x, p.z - pose(o).z) < (c.length + o.length) / 2 + 0.7);
-    if (blocked) c.v = 0; else c.s = Math.max(c.s, next);
+    // every active car keeps its current pose in _p, so each pair is a cheap distance check instead of a recomputed pose
+    const blocked = t.cars.some(o => o !== c && o.active && Math.hypot(p.x - o._p.x, p.z - o._p.z) < (c.length + o.length) / 2 + 0.7);
+    if (blocked) c.v = 0; else { const ns = Math.max(c.s, next); if (ns !== c.s) { c.s = ns; c._p = ns === next ? p : pose(c, ns); } }
     const exit = exitOf(c, c.s);
     if (!c.counted && c.committed && exit >= 20) { c.counted = true; t.events.push(c); }
     if (c.committed && !c.released && exit > CLEAR + c.length / 2) c.released = true;

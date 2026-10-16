@@ -84,6 +84,18 @@ function junctionStatic(def) {
   return bake(g);
 }
 
+// Background buildings along the street: one window strip per floor instead of hundreds of separate window
+// parts. They are far from the camera focus, and building them this way is about ten times cheaper to load.
+const fillWall = M(0xe0e5dc), fillGlass = M(0xbacac5, 0.5), fillRoof = M(0xd0d9ce);
+function fillerBuilding(x, z, w, d, h) {
+  const g = new T.Group(); g.position.set(x, 0, z);
+  box(g, w + 0.5, 0.5, d + 0.5, mats.curb, 0, 0.4, 0);
+  box(g, w, h, d, fillWall, 0, h / 2 + 0.65, 0);
+  for (let y = 2.4; y < h; y += 2.7) for (const side of [-1, 1]) box(g, w * 0.86, 1.4, 0.06, fillGlass, 0, y, side * (d / 2 + 0.03));
+  box(g, w + 0.3, 0.25, d + 0.3, fillWall, 0, h + 0.8, 0); box(g, w - 1, 0.12, d - 1, fillRoof, 0, h + 0.96, 0);
+  return g;
+}
+
 function streetStatic() {
   const g = new T.Group(), xs = DEFS.map(d => d.x);
   const last = xs[xs.length - 1];
@@ -95,11 +107,11 @@ function streetStatic() {
     const a = edges[i], b = edges[i + 1], len = b - a, cx = (a + b) / 2;
     for (const s of [-1, 1]) {
       box(g, len, 0.4, 8, mats.curb, cx, -0.02, s * 15);
-      for (let x = a + 12; x < b - 8; x += 15) { const tree = makeTree(Math.floor(x) + (s > 0 ? 3 : 0)); tree.position.set(x, 0.3, s * 17.5); g.add(tree); }
+      for (let x = a + 12; x < b - 8; x += 24) { const tree = makeTree(Math.floor(x) + (s > 0 ? 3 : 0)); tree.position.set(x, 0.3, s * 17.5); g.add(tree); }
       let seed = Math.abs(Math.floor(a)) + (s > 0 ? 7 : 1);
       for (let x = a + 16; x < b - 12; x += 24) {
         seed = (seed * 9301 + 49297) % 233280;
-        g.add(makeBuilding(x, s * 31, 15 + (seed % 5), 12, 7 + (seed % 9)));
+        g.add(fillerBuilding(x, s * 31, 15 + (seed % 5), 12, 7 + (seed % 9)));
       }
     }
   }
@@ -147,7 +159,9 @@ function streetlife(parent, arms) {
 }
 
 export function createWorld(scene) {
+  performance.mark('cv-street-start');
   scene.add(streetStatic());
+  performance.mark('cv-street-end');
   const outlineMats = vehicleTypes.map(v => new T.LineBasicMaterial({ color: v.color, transparent: true, opacity: 0 }));
   const trailMats = vehicleTypes.map(v => new T.MeshBasicMaterial({ color: v.color, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide }));
   const edgeGeo = DIMS.map(d => new T.EdgesGeometry(new T.BoxGeometry(d.w + 0.2, d.h + 0.2, d.l + 0.2)));
@@ -208,7 +222,9 @@ export function createWorld(scene) {
 
   const junctions = DEFS.map((def, di) => {
     const group = new T.Group(); group.position.x = def.x; scene.add(group);
+    performance.mark('cv-j' + di + '-static-start');
     group.add(junctionStatic(def));
+    performance.mark('cv-j' + di + '-static-end');
     const labels = roadLabels(group, def); labels.sprites.forEach(s => badges.push(s));
     const specs = def.types.map((type, i) => ({ type, length: DIMS[type].l, id: String(di * 100 + i + 1).padStart(3, '0'), r: def.arms[i % def.arms.length] }));
     const traffic = createTraffic(specs, def.arms, def.groups, 11 + di);
@@ -275,8 +291,13 @@ export function createWorld(scene) {
         }
       }
     };
-    for (let i = 0; i < 60 * 45; i++) J.step(1 / 60);          // warm up so traffic is already flowing
-    J.reset();
+    // Warm up so traffic is already flowing. The hero junction does it now (a short pause at load); the others
+    // are warmed gradually after the first frame, or the first time they are simulated (see journey.js).
+    performance.mark('cv-j' + di + '-cars-end');
+    const warm = n => { for (let i = 0; i < n; i++) J.step(1 / 60); J.reset(); };
+    let warmed = false;
+    J.ensureWarm = () => { if (!warmed) { warmed = true; warm(60 * 15); } };
+    if (di === 0) { warmed = true; warm(60 * 12); }
     return J;
   });
 

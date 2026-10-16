@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -55,9 +55,7 @@
       </div>
 
       <figure class="pip" id="pip">
-        <video id="pip-video" muted loop playsinline preload="auto" poster="assets/via-x1-poster.jpg" aria-label="Vídeo de exemplo de uma via em X com detecção de veículos">
-          <source src="assets/via-x1.mp4" type="video/mp4">
-        </video>
+        <video id="pip-video" muted loop playsinline preload="none" poster="assets/via-x1-poster.jpg" data-src="assets/via-x1-small.mp4" aria-label="Vídeo de exemplo de uma via em X com detecção de veículos"></video>
         <figcaption><span class="lbl" data-i18n="pip_lbl">Seu vídeo (exemplo)</span><small data-i18n="pip_cap">Vídeo de exemplo de um cruzamento, já com a detecção de veículos aplicada.</small></figcaption>
       </figure>
 
@@ -75,9 +73,7 @@
           <p class="hint" data-i18n="hud_hint">A>B: entra por A e sai por B.</p>
         </div>
         <div class="pane" id="pane-video" role="tabpanel" aria-labelledby="tab-video" hidden>
-          <video id="hud-video" muted loop playsinline preload="metadata" poster="assets/via-x1-poster.jpg" aria-label="Vídeo de exemplo de uma via em X com detecção de veículos">
-            <source src="assets/via-x1.mp4" type="video/mp4">
-          </video>
+          <video id="hud-video" muted loop playsinline preload="none" poster="assets/via-x1-poster.jpg" data-src="assets/via-x1-small.mp4" aria-label="Vídeo de exemplo de uma via em X com detecção de veículos"></video>
           <p class="hint" data-i18n="hud_vid_cap">Vídeo de exemplo de uma via em X. Os números do painel vêm da simulação 3D.</p>
         </div>
         <ol class="feed" id="hud-feed"></ol>

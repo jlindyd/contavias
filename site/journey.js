@@ -1,4 +1,4 @@
-﻿import * as T from 'three';
+import * as T from 'three';
 import { createWorld, DEFS, LETTER, movementKey, classOf } from './tour-world.js';
 import { vehicleTypes } from './hero-models.js';
 import { createEnvironment, setVehicleEnvironment } from './vehicles.js';
@@ -11,27 +11,36 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const CV = window.CV, t = k => CV.t(k);
 const demo = $('demo');
 
-try { init(); } catch (e) { $('fallback').hidden = false; console.error(e); }
+// Let the browser paint the page (headline, steps, buttons) first; the 3D world is built right after.
+requestAnimationFrame(() => setTimeout(() => { try { init(); } catch (e) { $('fallback').hidden = false; console.error(e); } }, 0));
 
 function init() {
   const mobileNow = () => innerWidth < 700;
-  const renderer = new T.WebGLRenderer({ canvas: $('world'), antialias: !mobileNow() });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, mobileNow() ? 1.5 : 2));
+  // Lite mode: the browser is drawing 3D in software (no real graphics card) or the machine has very few cores.
+  // It keeps the same scene but drops shadows, anti-aliasing, resolution and frame rate so the computer stays usable.
+  const gpuName = (() => { try { const g = document.createElement('canvas').getContext('webgl'), e = g && g.getExtension('WEBGL_debug_renderer_info'); return e ? String(g.getParameter(e.UNMASKED_RENDERER_WEBGL)) : ''; } catch (err) { return ''; } })();
+  const liteQuery = new URLSearchParams(location.search).get('lite');                      // ?lite=1 or ?lite=0 forces a mode
+  const lite = liteQuery === '1' ? true : liteQuery === '0' ? false : /swiftshader|llvmpipe|software|basic render/i.test(gpuName) || (navigator.hardwareConcurrency || 8) <= 2;
+  const renderer = new T.WebGLRenderer({ canvas: $('world'), antialias: !mobileNow() && !lite });
+  renderer.setPixelRatio(lite ? 1 : Math.min(devicePixelRatio, mobileNow() ? 1.25 : 1.5));       // capped: a 2x or 3x screen would redraw 4 to 9 times the pixels
   renderer.setClearColor(0xedf0eb);
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = !lite; renderer.shadowMap.type = T.PCFSoftShadowMap;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   const scene = new T.Scene();
   scene.fog = new T.Fog(0xedf0eb, 110, 240);
   const camera = new T.PerspectiveCamera(36, 1, 0.1, 400);
   scene.add(new T.HemisphereLight(0xffffff, 0xc5cfc0, 2.6));
   const sun = new T.DirectionalLight(0xfffaf0, 3);
-  sun.castShadow = true; sun.shadow.mapSize.set(mobileNow() ? 1024 : 2048, mobileNow() ? 1024 : 2048);
+  sun.castShadow = true; sun.shadow.mapSize.set(mobileNow() ? 1024 : 1536, mobileNow() ? 1024 : 1536);
   Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 190 });
   sun.shadow.normalBias = 0.1; sun.shadow.bias = -0.0002;
   scene.add(sun, sun.target);
 
+  performance.mark('cv-env-start');
   setVehicleEnvironment(createEnvironment(renderer));      // a small daylight sky for paint and glass reflections
+  performance.mark('cv-world-start');
   const world = createWorld(scene);
+  performance.mark('cv-world-end');
   const J = world.junctions;                       // x, single road, T, downtown x
 
   /* ---------- the five steps and their sceneries ---------- */
@@ -113,11 +122,14 @@ function init() {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     e.preventDefault(); const n = tab === 'mv' ? 'video' : 'mv'; setTab(n); $('tab-' + n).focus();
   });
+  // The sample clip is a separate download, started only when a video is about to play, and shared by both players.
+  const loadSrc = v => { if (!v.src && v.dataset.src) { v.src = v.dataset.src; v.load(); } };
   function syncVideo(want) {
+    if (want) loadSrc(video);
     if (want && !vidPlaying) { vidPlaying = true; video.play().catch(() => { vidPlaying = false; }); }
     else if (!want && vidPlaying) { vidPlaying = false; video.pause(); }
   }
-  addEventListener('cv:lang', () => { stage = -1; focus = -1; hudSig = ''; paintPause(); });
+  addEventListener('cv:lang', () => { stage = -1; focus = -1; hudSig = ''; paintPause(); dirty = true; });
 
   /* ---------- labels ---------- */
   const labelEls = new Map();
@@ -128,6 +140,7 @@ function init() {
   const pip = $('pip'), pipVideo = $('pip-video'), ptr = { x: 0, y: 0, tx: 0, ty: 0 };
   let pipPlaying = false;
   function syncPip(want) {
+    if (want) loadSrc(pipVideo);
     if (want && !pipPlaying) { pipPlaying = true; pipVideo.play().catch(() => { pipPlaying = false; }); }
     else if (!want && pipPlaying) { pipPlaying = false; pipVideo.pause(); }
   }
@@ -137,7 +150,7 @@ function init() {
   // Everything is frozen while the visitor scrolls. On arriving at a junction the detection layers fade in,
   // and after a short beat the traffic starts by itself. The hero plays on its own and has a pause button.
   const BEAT = 900;                                   // ms between arriving and the cars starting to move
-  let heroPaused = reduced, lastRaw = 0, lastMoveT = -1e9, restSince = null, det = 0;
+  let heroPaused = reduced, lastRaw = 0, lastMoveT = -1e9, restSince = null, det = 0, dirty = true;     // dirty: force the next frame to draw
   let driftTime = 0;
   const pauseBtn = $('pause');
   function paintPause() { pauseBtn.textContent = t(heroPaused ? 'btn_play' : 'btn_pause'); pauseBtn.setAttribute('aria-pressed', String(heroPaused)); }
@@ -151,15 +164,22 @@ function init() {
     // on wide screens, push the scene toward the free area between the copy and the report panel
     if (width >= 900) camera.setViewOffset(width, height, -width * 0.1, 0, width, height); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
-    world.setBadgeScale(height);
+    world.setBadgeScale(height); dirty = true;
   }
   addEventListener('resize', resize); resize();
   let visible = true;
   new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe(demo);
 
   /* ---------- loop ---------- */
-  let last = performance.now(), time = 0, ps = 0;
+  // Performance: the scene is only redrawn when something changed (the camera, the layers, the traffic or the
+  // hero drift). While frozen at a junction the GPU is idle. Traffic runs at a capped frame rate, resolution
+  // drops by itself on machines that cannot keep up, and only the junction on screen is simulated.
+  let last = performance.now(), time = 0, ps = 0, lastRenderT = 0, lastKey = '', emaMs = 16, slowRuns = 0, fastRuns = 0, shadowTick = 0;
+  let pr = renderer.getPixelRatio(), fpsCap = lite ? 24 : 45; const prMax = pr, fpsMax = fpsCap;
+  function setPR(v) { pr = v; renderer.setPixelRatio(pr); renderer.setSize(width, height, false); dirty = true; }
   const ov = { box: 0, cls: 0, trail: 0, trailBoost: 0, gate: 0 };
+  renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
+  window.__cvInfo = { renderer: renderer.info, lite, gpuName };                      // read-only diagnostics
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -178,7 +198,6 @@ function init() {
     const run = !heroPaused && (inHero ? idle : (resting && now - restSince > BEAT));
     det += ((resting && !inHero ? 1 : 0) - det) * (1 - Math.exp(-dt * 6));                   // detection layers follow arrival
     if (run) time += dt;
-    for (const j of J) j.step(run ? dt : 0);
 
     const c = camAt(ps, m);
     // slow drift plus a little pointer parallax, strongest at the very top and gone after the first scroll
@@ -187,25 +206,33 @@ function init() {
       driftTime += dt;
       ptr.x += (ptr.tx - ptr.x) * (1 - Math.exp(-dt * 3)); ptr.y += (ptr.ty - ptr.y) * (1 - Math.exp(-dt * 3));
     }
-    camera.position.set(c.pos[0] + (ptr.x * 2.6 + Math.sin(driftTime / 3.8) * 0.8) * hw, c.pos[1] + (-ptr.y * 0.9 + Math.sin(driftTime / 5.2) * 0.3) * hw, c.pos[2]);
-    camera.lookAt(c.look[0], c.look[1], c.look[2]);
-    sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
+    // only the junctions near the camera exist for this frame, and only those are simulated
+    const near = J.filter(j => Math.abs(c.look[0] - j.def.x) < 175);
+    for (const j of J) j.group.visible = near.includes(j);
+    if (run) for (const j of near) { j.ensureWarm(); j.step(dt); }
 
-    // one layer per step: boxes, then classes, then trails, then the count gates
-    // boxes and a trail behind every vehicle from the first step; classes, a stronger trail, then the count gates follow
-    // every layer is also multiplied by `det`, so boxes, labels, trails and gates only show while the camera rests at a junction
-    ov.box = smooth((ps - 0.1) / 0.05) * det; ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05) * det; ov.trailBoost = smooth((ps - 0.5) / 0.05) * det; ov.gate = smooth((ps - 0.7) / 0.05) * det;
-    world.setOverlays(ov);
-    for (const j of J) {
-      j.group.visible = Math.abs(c.look[0] - j.def.x) < 175;
-      if (j.group.visible) j.layout(ov, time, run ? dt : 0);
+    // did anything visible change since the last drawn frame?
+    const key = ps.toFixed(4) + '|' + det.toFixed(3) + '|' + (hw > 0.01 ? ptr.x.toFixed(2) + ptr.y.toFixed(2) + Math.floor(driftTime * 24) : '') + '|' + pr;
+    const need = dirty || run || key !== lastKey;
+    const interval = run ? 1000 / fpsCap : hw > 0.01 ? 1000 / 24 : 0;
+    const draw = need && now - lastRenderT >= interval;
+
+    if (draw) {
+      camera.position.set(c.pos[0] + (ptr.x * 2.6 + Math.sin(driftTime / 3.8) * 0.8) * hw, c.pos[1] + (-ptr.y * 0.9 + Math.sin(driftTime / 5.2) * 0.3) * hw, c.pos[2]);
+      camera.lookAt(c.look[0], c.look[1], c.look[2]);
+      sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
+
+      // every layer is multiplied by `det`, so boxes, labels, trails and gates only show while the camera rests at a junction
+      ov.box = smooth((ps - 0.1) / 0.05) * det; ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05) * det; ov.trailBoost = smooth((ps - 0.5) / 0.05) * det; ov.gate = smooth((ps - 0.7) / 0.05) * det;
+      world.setOverlays(ov);
+      for (const j of near) j.layout(ov, time, run ? dt : 0);
     }
 
     const s = stageOf(ps);
-    if (s !== stage) { stage = s; paintCopy(); }
+    if (s !== stage) { stage = s; paintCopy(); dirty = true; }
     const f = FOCUS[s];
     if (f !== focus) {
-      focus = f; hudSig = '';
+      focus = f; hudSig = ''; dirty = true;
       const j = J[f];
       if (s > 0 && !j.started) { j.started = true; j.reset(); }                // each scenery starts counting when you arrive
       buildHud(j);
@@ -216,8 +243,11 @@ function init() {
     const isX = s >= 1 && J[focus].def.id === 'x';
     $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
     syncVideo(isX && tab === 'video' && !heroPaused && !reduced && atStop && idle);
-    $('view').textContent = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
+    const viewText = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
+    if ($('view').textContent !== viewText) $('view').textContent = viewText;
     if (s >= 1) paintHud(J[focus]);
+
+    if (!draw) return;
 
     // vehicle labels, kept clear of the copy column and the report panel
     const lj = J[focus];
@@ -233,10 +263,31 @@ function init() {
       if (!(v3.z < 1 && x > x0 && x < x1 && y > y0 && y < y1)) { el.hidden = true; continue; }
       shown++; el.hidden = false; el.classList.toggle('count-label', flash);
       const name = t('vt' + classOf(car.type));
-      el.textContent = flash ? `+1 · ${name} · ${movementKey(car).replace('>', ' → ')}` : ov.cls > 0.5 ? `${name} · V${car.id}` : `V${car.id}`;
-      el.style.left = x + 'px'; el.style.top = y + 'px';
+      const text = flash ? `+1 · ${name} · ${movementKey(car).replace('>', ' → ')}` : ov.cls > 0.5 ? `${name} · V${car.id}` : `V${car.id}`;
+      if (el._text !== text) { el._text = text; el.textContent = text; }
+      if (Math.abs((el._x ?? -9) - x) > 0.5 || Math.abs((el._y ?? -9) - y) > 0.5) { el._x = x; el._y = y; el.style.left = x + 'px'; el.style.top = y + 'px'; }
     }
+
+    // shadows follow the camera and the traffic, but not on every single frame
+    if (key !== lastKey || dirty || (run && ++shadowTick % 2 === 0)) renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
+    const frameMs = now - lastRenderT;
+    lastRenderT = now; lastKey = key; dirty = false;          // must come before the adaptive step: changing the resolution clears the canvas and marks it dirty again
+
+    // adaptive resolution: only judged while the traffic is running
+    if (run) {
+      emaMs += (frameMs - emaMs) * 0.08;
+      // falling behind: first lower the resolution, then the frame rate; recover slowly when there is headroom
+      if (emaMs > 1000 / fpsCap * 1.6 && (pr > 0.75 || fpsCap > 20)) {
+        if (++slowRuns > 40) { slowRuns = 0; if (pr > 0.75) setPR(Math.max(0.75, pr - 0.25)); else fpsCap = Math.max(20, fpsCap - 10); }
+      } else slowRuns = 0;
+      if (emaMs < 1000 / fpsCap * 1.1 && (pr < prMax || fpsCap < fpsMax)) {
+        if (++fastRuns > 400) { fastRuns = 0; if (fpsCap < fpsMax) fpsCap = Math.min(fpsMax, fpsCap + 10); else setPR(Math.min(prMax, pr + 0.25)); }
+      } else fastRuns = 0;
+    }
   }
+  // wake the other junctions up gradually after load, so nothing stalls during the first scroll
+  const whenIdle = window.requestIdleCallback ? f => requestIdleCallback(f, { timeout: 6000 }) : f => setTimeout(f, 800);
+  [1, 2, 3].forEach((i, k) => setTimeout(() => whenIdle(() => J[i].ensureWarm()), 2500 + k * 1200));
   requestAnimationFrame(frame);
 }

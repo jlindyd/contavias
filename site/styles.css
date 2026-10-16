@@ -78,7 +78,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 /* the copy sits on a frosted card, so traffic passing behind it never fights the text */
 .copy {
   position: absolute; left: calc(var(--sc-gutter) - 1.5rem); top: calc(22% - 1.5rem); width: min(46%, 38rem); box-sizing: border-box; padding: 1.5rem 1.5rem 1.6rem;
-  background: color-mix(in oklab, var(--sc-surface) 68%, transparent); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  background: color-mix(in oklab, var(--sc-surface) 86%, transparent);   /* no backdrop blur: blurring a live 3D canvas every frame is very expensive on laptop graphics */
   border: 1px solid color-mix(in oklab, var(--sc-ink) 8%, transparent); border-radius: 18px; box-shadow: 0 24px 50px -34px rgba(36, 50, 52, 0.45); pointer-events: none;
 }
 .copy h1 { font: 600 clamp(2.2rem, 3.9vw, 3.9rem)/1.05 var(--sc-font-display); letter-spacing: -0.04em; margin: 0 0 1.25rem; text-wrap: balance; }
@@ -91,11 +91,11 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   position: absolute; right: var(--sc-gutter); top: 128px; width: min(19rem, 27vw); padding: 1.1rem 1.15rem 1.15rem;
   max-height: calc(100svh - 128px - 20px); overflow-y: auto;
   background: color-mix(in oklab, var(--sc-surface) 93%, transparent); border: 1px solid var(--line); border-radius: 12px;
-  box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45); backdrop-filter: blur(8px);
+  box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45);
 }
 .lbl { font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-ink-soft); }
 .hud h2 { font: 600 1.5rem/1.1 var(--sc-font-display); letter-spacing: -0.025em; margin: 0.35rem 0 0.9rem; }
-.pip { position: absolute; z-index: 2; right: var(--sc-gutter); top: 128px; width: min(19rem, 27vw); margin: 0; padding: 0.65rem; background: color-mix(in oklab, var(--sc-surface) 93%, transparent); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45); backdrop-filter: blur(8px); }
+.pip { position: absolute; z-index: 2; right: var(--sc-gutter); top: 128px; width: min(19rem, 27vw); margin: 0; padding: 0.65rem; background: color-mix(in oklab, var(--sc-surface) 93%, transparent); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45); }
 .pip video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #1b2426; }
 .pip figcaption { display: grid; gap: 0.3rem; margin-top: 0.65rem; }
 .pip small { font-size: 0.75rem; line-height: 1.4; color: var(--sc-ink-soft); }
@@ -122,7 +122,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .cls dd { margin: 0; font: 600 0.9375rem var(--mono); }
 .cls dt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.5625rem; letter-spacing: 0.02em; color: var(--sc-ink-soft); }
 
-.view-label { position: absolute; left: var(--sc-gutter); bottom: 26px; display: grid; gap: 0.3rem; text-align: left; padding: 0.5rem 0.7rem; border-radius: 8px; background: color-mix(in oklab, var(--sc-surface) 82%, transparent); backdrop-filter: blur(6px); }
+.view-label { position: absolute; left: var(--sc-gutter); bottom: 26px; display: grid; gap: 0.3rem; text-align: left; padding: 0.5rem 0.7rem; border-radius: 8px; background: color-mix(in oklab, var(--sc-surface) 90%, transparent); }
 .view-label span { font: 500 0.6875rem var(--mono); letter-spacing: 0.12em; color: var(--sc-ink); }
 .view-label small { font-size: 0.75rem; color: var(--sc-ink-soft); }
 .dock { position: absolute; right: var(--sc-gutter); bottom: 26px; display: flex; }
@@ -133,7 +133,7 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .steps button {
   display: inline-flex; align-items: center; gap: 0.55rem; min-height: 40px; padding: 0 1rem 0 0.45rem; cursor: pointer;
   font: 500 0.875rem var(--sc-font-text); color: var(--sc-ink);
-  background: color-mix(in oklab, var(--sc-surface) 88%, transparent); backdrop-filter: blur(6px);
+  background: color-mix(in oklab, var(--sc-surface) 92%, transparent);
   border: 1px solid color-mix(in oklab, var(--sc-ink) 24%, transparent); border-radius: 999px;
   transition: background-color 160ms var(--sc-ease-out), color 160ms var(--sc-ease-out), border-color 160ms var(--sc-ease-out), transform 120ms var(--sc-ease-out);
 }

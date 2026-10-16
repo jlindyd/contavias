@@ -287,11 +287,11 @@ export function makeVehicle(type, seed) {
   const special = { brake, indL, indR };
   for (const role in P.parts) {
     const m = new T.Mesh(P.parts[role], special[role] || roleMat[role] || SHARED.trim);
-    m.castShadow = role === 'paint' || role === 'cargo' || role === 'glass'; body.add(m);
+    m.castShadow = role === 'paint' || role === 'cargo'; body.add(m);                       // paint alone gives the silhouette; fewer shadow draws per vehicle
   }
   const wheels = P.wheels.map(w => {
     const pivot = new T.Group(); pivot.position.set(w.x, w.r, w.z);
-    const spin = new T.Mesh(wheelGeo(w.r), [SHARED.rubber, SHARED.rim]); spin.castShadow = true; pivot.add(spin); root.add(pivot);
+    const spin = new T.Mesh(wheelGeo(w.r), [SHARED.rubber, SHARED.rim]); pivot.add(spin); root.add(pivot);
     return { pivot, spin, front: w.front, r: w.r };
   });
   const sh = new T.Mesh(PLANE, shadowMat); sh.scale.set(P.W * 1.5, 1, P.L * 1.25); sh.position.y = 0.03; root.add(sh);
