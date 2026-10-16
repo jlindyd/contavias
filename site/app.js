@@ -9,6 +9,9 @@ const SITE = 'https://contavias.com.br/produto/';
 const T = {
   pt: {
     nav_demo: 'Demonstração', nav_report: 'Relatório', nav_pricing: 'Preços', nav_faq: 'FAQ',
+    nav_agent: 'Fale com nosso agente', nav_agent_short: 'Agente',
+    agent_h: 'Fale com nosso agente', agent_p: 'Tire suas dúvidas sobre planos, vídeos e contagem de veículos.',
+    agent_open: 'Abrir em outra janela ↗', agent_loading: 'Carregando conversa…', agent_frame: 'Conversa com o agente ContaVias',
     cta: 'Iniciar contagem',
     world_aria: 'Cena 3D animada de cruzamentos com veículos sendo detectados e contados',
     demo_tag: 'Visualização demonstrativa · dados simulados',
@@ -91,6 +94,9 @@ const T = {
   },
   en: {
     nav_demo: 'Demo', nav_report: 'Report', nav_pricing: 'Pricing', nav_faq: 'FAQ',
+    nav_agent: 'Ask our agent', nav_agent_short: 'Agent',
+    agent_h: 'Ask our agent', agent_p: 'Ask about plans, video requirements, and vehicle counting.',
+    agent_open: 'Open in a new window ↗', agent_loading: 'Loading conversation…', agent_frame: 'Chat with the ContaVias agent',
     cta: 'Start a count',
     world_aria: 'Animated 3D scene of junctions with vehicles being detected and counted',
     demo_tag: 'Demo visualization · simulated data',

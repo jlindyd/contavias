@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="scrollcraft.css">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="scene.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body>
@@ -19,12 +20,16 @@
 
 <header class="bar">
   <a class="bar__mark" href="#top" aria-label="ContaVias"><span>Conta</span>Vias<i aria-hidden="true">///</i></a>
-  <nav class="bar__tabs" aria-label="Seções">
-    <a href="#demo" data-i18n="nav_demo">Demonstração</a>
-    <a href="#report" data-i18n="nav_report">Relatório</a>
-    <a href="#pricing" data-i18n="nav_pricing">Preços</a>
-    <a href="#faq" data-i18n="nav_faq">FAQ</a>
-  </nav>
+      <nav class="steps bar__steps" data-i18n-aria="chapters_aria" aria-label="Etapas da contagem">
+        <span class="steps__label" data-i18n="steps_label">Como funciona</span>
+        <button type="button" data-stop="0"><i aria-hidden="true">1</i><span data-i18n="st1">Detectar</span></button>
+        <button type="button" data-stop="1"><i aria-hidden="true">2</i><span data-i18n="st2">Classificar</span></button>
+        <button type="button" data-stop="2"><i aria-hidden="true">3</i><span data-i18n="st3">Rastrear</span></button>
+        <button type="button" data-stop="3"><i aria-hidden="true">4</i><span data-i18n="st4">Contar</span></button>
+        <button type="button" data-stop="4"><i aria-hidden="true">5</i><span data-i18n="st5">Relatório</span></button>
+        <a href="#pricing" data-i18n="nav_pricing">Preços</a><a href="#faq" data-i18n="nav_faq">FAQ</a>
+        <a href="#agent" data-i18n-aria="nav_agent" aria-label="Fale com nosso agente"><span class="nav-label" data-i18n="nav_agent">Fale com nosso agente</span><span class="nav-label-mobile" data-i18n="nav_agent_short">Agente</span></a>
+      </nav>
   <div class="bar__lang" role="group" aria-label="Idioma / Language">
     <button type="button" data-lang="pt" aria-pressed="true">PT</button>
     <button type="button" data-lang="en" aria-pressed="false">EN</button>
@@ -70,45 +75,15 @@
         <ol class="feed" id="hud-feed"></ol>
       </aside>
 
-      <div class="view-label"><span id="view"></span><small data-i18n="demo_tag">Visualização demonstrativa · dados simulados</small></div>
-      <div class="dock">
-        <button type="button" id="pause" class="pause" aria-pressed="false"></button>
-      </div>
-      <nav class="steps" data-i18n-aria="chapters_aria" aria-label="Etapas da contagem">
-        <span class="steps__label" data-i18n="steps_label">Como funciona</span>
-        <button type="button" data-stop="0"><i aria-hidden="true">1</i><span data-i18n="st1">Detectar</span></button>
-        <button type="button" data-stop="1"><i aria-hidden="true">2</i><span data-i18n="st2">Classificar</span></button>
-        <button type="button" data-stop="2"><i aria-hidden="true">3</i><span data-i18n="st3">Rastrear</span></button>
-        <button type="button" data-stop="3"><i aria-hidden="true">4</i><span data-i18n="st4">Contar</span></button>
-        <button type="button" data-stop="4"><i aria-hidden="true">5</i><span data-i18n="st5">Relatório</span></button>
-      </nav>
-      <p id="fallback" hidden data-i18n="fallback">Seu navegador não conseguiu iniciar a visualização 3D.</p>
-    </div>
-  </section>
-
-  <!-- 2 · COMPARE (flow) -->
-  <section class="sc-section compare" data-sc-act="flow" data-sc-drift="#edf0eb">
-    <div class="sc-wrap">
-      <div class="sc-stack" data-sc-in data-sc-stagger="60">
-        <h2 class="sc-display sc-display--lg" data-i18n="c_h">Ainda conta veículos manualmente?</h2>
-        <p class="sc-body" data-i18n="c_p">O trabalho é o mesmo. O que muda é quem faz e quanto custa.</p>
-      </div>
-      <table class="cmp" data-sc-in>
-        <thead><tr><th scope="col"></th><th scope="col" data-i18n="c_manual">Manual</th><th scope="col">ContaVias</th></tr></thead>
-        <tbody id="cmp-body"></tbody>
-      </table>
-      <p class="foot-note" data-i18n="note">*Para máxima precisão, use vídeo Full HD (1920×1080), sem imagem borrada ou obstruções. O prazo normal é de 48 h e pode variar em alta demanda.</p>
-    </div>
-  </section>
 
   <!-- 3 · REPORT (flow) -->
-  <section id="report" class="sc-section report" data-sc-act="flow" data-sc-drift="#e7ebe5">
+  <section id="report" class="report journey-report" hidden aria-labelledby="report-title">
     <div class="sc-wrap">
-      <div class="sc-stack" data-sc-in data-sc-stagger="60">
-        <h2 class="sc-display sc-display--lg" data-i18n="rp_h">O que você recebe</h2>
+      <div class="sc-stack">
+        <h2 id="report-title" class="sc-display sc-display--lg" data-i18n="rp_h">O que você recebe</h2>
         <p class="sc-body" data-i18n="rp_p">Um relatório pronto para decidir. Este exemplo é calculado a partir dos dados da demonstração.</p>
       </div>
-      <div class="rep" data-sc-in>
+      <div class="rep">
         <div class="rep__peak">
           <span class="lbl" data-i18n="rp_peak">Horário de pico</span>
           <strong id="peak-time">--</strong>
@@ -128,6 +103,25 @@
           <button type="button" class="ghost" id="btn-csv" data-i18n="rp_csv">Baixar CSV de exemplo</button>
         </div>
       </div>
+    </div>
+  </section>
+
+      <p id="fallback" hidden data-i18n="fallback">Seu navegador não conseguiu iniciar a visualização 3D.</p>
+    </div>
+  </section>
+
+  <!-- 2 · COMPARE (flow) -->
+  <section class="sc-section compare" data-sc-act="flow" data-sc-drift="#edf0eb">
+    <div class="sc-wrap">
+      <div class="sc-stack" data-sc-in data-sc-stagger="60">
+        <h2 class="sc-display sc-display--lg" data-i18n="c_h">Ainda conta veículos manualmente?</h2>
+        <p class="sc-body" data-i18n="c_p">O trabalho é o mesmo. O que muda é quem faz e quanto custa.</p>
+      </div>
+      <table class="cmp" data-sc-in>
+        <thead><tr><th scope="col"></th><th scope="col" data-i18n="c_manual">Manual</th><th scope="col">ContaVias</th></tr></thead>
+        <tbody id="cmp-body"></tbody>
+      </table>
+      <p class="foot-note" data-i18n="note">*Para máxima precisão, use vídeo Full HD (1920×1080), sem imagem borrada ou obstruções. O prazo normal é de 48 h e pode variar em alta demanda.</p>
     </div>
   </section>
 
@@ -189,6 +183,21 @@
     </div>
   </section>
 
+  <!-- Agent: loaded only when this panel is opened. -->
+  <section id="agent" class="scene-panel agent-panel" hidden aria-labelledby="agent-title">
+    <div class="sc-wrap">
+      <div class="agent-heading">
+        <h2 id="agent-title" data-i18n="agent_h">Fale com nosso agente</h2>
+        <a class="agent-external" href="https://customer.i.dyd.com/c/2552e469-22f2-48b1-849a-a3c91c384686" target="_blank" rel="noopener" data-i18n="agent_open">Abrir em outra janela ↗</a>
+      </div>
+      <p class="sc-body" data-i18n="agent_p">Tire suas dúvidas sobre planos, vídeos e contagem de veículos.</p>
+      <div class="agent-chat">
+        <p id="agent-status" role="status" data-i18n="agent_loading">Carregando conversa…</p>
+        <iframe id="agent-frame" title="Agente ContaVias" data-src="https://customer.i.dyd.com/c/2552e469-22f2-48b1-849a-a3c91c384686" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="clipboard-write"></iframe>
+      </div>
+    </div>
+  </section>
+
   <!-- 7 · CLOSE (pin + input). Last element on the page. -->
   <section id="start" data-sc-act="pin" data-sc-span="1.15" data-sc-drift="#e7ebe5">
     <div data-sc-stage class="close">
@@ -219,10 +228,8 @@
 
 </main>
 
-<script src="scrollcraft.js"></script>
 <script src="app.js"></script>
 <script type="module" src="journey.js"></script>
-<script>ScrollCraft.mount(document.body);</script>
 </body>
 </html>
 

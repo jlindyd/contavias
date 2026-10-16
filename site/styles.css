@@ -244,6 +244,35 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .rep__table .ghost { justify-self: start; }
 @media (max-width: 800px) { .rep { grid-template-columns: 1fr; } .rep__chart, .rep__flow { grid-column: 1; grid-row: auto; } }
 
+/* A single persistent navigation row owns the demo and the page sections. */
+.steps.bar__steps { position: static; flex: 1; min-width: 0; margin-inline: auto; justify-content: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+.bar__steps .steps__label { display: none; }
+.bar__steps button, .bar__steps a { flex-shrink: 0; white-space: nowrap; }
+.bar__steps a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 0.8rem; font-size: 0.875rem; text-decoration: none; color: var(--sc-ink); border: 1px solid var(--line); border-radius: 999px; background: var(--sc-surface); }
+.bar__steps a.active { background: var(--teal); color: white; }
+.journey-report { position: absolute; z-index: 4; inset: calc(var(--bar-h) + 20px) var(--sc-gutter) 82px; padding: clamp(1rem, 3vw, 2rem); border: 1px solid var(--line); border-radius: 18px; background: var(--sc-surface); overflow-y: auto; }
+.journey-report .sc-wrap { width: 100%; max-width: 1100px; padding: 0; margin: auto; }
+.journey-report h2 { font-size: clamp(1.8rem, 3vw, 2.8rem); }
+.journey-report .sc-stack { margin-bottom: 1.25rem; }
+@media (max-width: 1400px) {
+  :root { --bar-h: 116px; }
+  .bar { flex-wrap: wrap; align-content: center; gap: 6px 1rem; background: color-mix(in oklab, var(--sc-canvas) 96%, transparent); }
+  .steps.bar__steps { order: 4; flex: 1 0 100%; justify-content: flex-start; margin: 0; padding-block: 2px; }
+  .bar__lang { margin-left: auto; }
+  .copy { top: calc(var(--bar-h) + 20px); max-height: calc(100svh - var(--bar-h) - 100px); }
+  .hud { top: calc(var(--bar-h) + 20px); max-height: calc(100svh - var(--bar-h) - 100px); }
+}
+@media (max-width: 700px) {
+  :root { --bar-h: 112px; }
+  .copy { top: calc(var(--bar-h) + 18px); max-height: calc(100svh - var(--bar-h) - 165px); }
+  .hud { top: auto; max-height: none; }
+  .steps.bar__steps { gap: 0.2rem; }
+  .bar__steps button, .bar__steps button.active { flex: 0 0 auto; padding-inline: 0.2rem; }
+  .bar__steps button.active span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .bar__steps a { font-size: 0.75rem; padding-inline: 0.45rem; }
+  .journey-report { inset: calc(var(--bar-h) + 12px) 4% 66px; padding: 1rem; }
+}
+
 /* ---------- pricing ---------- */
 .pick { display: grid; grid-template-columns: minmax(14rem, 20rem) 1fr; gap: clamp(1.25rem, 3vw, 3rem); align-items: start; }
 .pick__opts { display: grid; gap: 0.5rem; }

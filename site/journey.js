@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { navigation } from './navigation.js';
 import { createWorld, DEFS, LETTER, movementKey, classOf } from './tour-world.js';
 import { vehicleTypes } from './hero-models.js';
 import { createEnvironment, setVehicleEnvironment } from './vehicles.js';
@@ -76,17 +77,7 @@ function init() {
   }
 
   /* ---------- copy, chapters, report panel ---------- */
-  const chapters = [...document.querySelectorAll('[data-stop]')];
-  const stopMid = [0.2, 0.41, 0.62, 0.81, 0.96];
-  const scrollToP = p => { const top = demo.offsetTop, span = demo.offsetHeight - innerHeight; scrollTo({ top: top + p * span, behavior: reduced ? 'instant' : 'smooth' }); };
-  chapters.forEach((b, i) => b.addEventListener('click', () => scrollToP(stopMid[i])));
   let stage = -1, focus = -1, hudSig = '';
-  function paintCopy() {
-    const s = Math.max(0, stage);
-    $('jr-h').innerHTML = t('jr_h' + s); $('jr-p').textContent = t('jr_p' + s);
-    $('jr-cta').hidden = s > 0; $('jr-end').hidden = s !== 5;           // start button in the hero, report buttons on the last step
-    chapters.forEach((b, i) => { const on = s === i + 1; b.classList.toggle('active', on); b.classList.toggle('done', s > i + 1); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
-  }
   const lettersOf = j => ['A', 'B', 'C', 'D'].filter(l => j.def.arms.some(a => LETTER[a] === l));
   function buildHud(j) {
     const ls = lettersOf(j);
@@ -153,10 +144,9 @@ function init() {
   const BEAT = 900;                                   // ms between arriving and the cars starting to move
   let heroPaused = reduced, lastRaw = 0, lastMoveT = -1e9, restSince = null, det = 0, dirty = true;     // dirty: force the next frame to draw
   let driftTime = 0;
-  const pauseBtn = $('pause');
-  function paintPause() { pauseBtn.textContent = t(heroPaused ? 'btn_play' : 'btn_pause'); pauseBtn.setAttribute('aria-pressed', String(heroPaused)); }
-  pauseBtn.addEventListener('click', () => { heroPaused = !heroPaused; paintPause(); });
-  paintPause();
+  // There is no on-screen pause button any more. Motion is already frozen while scrolling, and visitors who prefer
+  // reduced motion start paused (heroPaused = reduced) and the traffic stays still for them.
+  function paintPause() {}
 
   let width = 0, height = 0;
   function resize() {
@@ -191,14 +181,14 @@ function init() {
   function setPR(v) { pr = v; renderer.setPixelRatio(pr); renderer.setSize(width, height, false); dirty = true; }
   const ov = { box: 0, cls: 0, trail: 0, trailBoost: 0, gate: 0 };
   renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
-  window.__cvInfo = { renderer: renderer.info, lite, gpuName };                      // read-only diagnostics
+  window.__cvInfo = { renderer: renderer.info, lite, gpuName, get simulationTime() { return time; } };                      // read-only diagnostics
   function frame(now) {
     frameId = 0;
     if (!visible || document.hidden) { syncPip(false); return; }
     frameId = requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
     if (!visible) { syncPip(false); return; }
-    const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
+    const raw = navigation.progress;
     ps = reduced ? raw : ps + (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
     // is the visitor scrolling, and is the camera resting at a scenery (or at the hero)?
@@ -248,8 +238,8 @@ function init() {
       }
     }
 
-    const s = stageOf(ps);
-    if (s !== stage) { stage = s; paintCopy(); dirty = true; }
+    const s = Math.min(navigation.index, 5);
+    if (s !== stage) { stage = s; dirty = true; }
     const f = FOCUS[s];
     if (f !== focus) {
       focus = f; hudSig = ''; dirty = true;
@@ -258,11 +248,7 @@ function init() {
       buildHud(j);
       selectSample(f);
     }
-    $('hud').hidden = s < 1;
-    pauseBtn.hidden = false; // One motion control for the entire demo.
-    syncPip(!heroPaused && !reduced && atStop && idle);
-    const viewText = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
-    if ($('view').textContent !== viewText) $('view').textContent = viewText;
+    syncPip(s !== 5 && !heroPaused && !reduced && atStop && idle);
     if (s >= 1 && J[focus].ready) paintHud(J[focus]);
 
     if (!draw) return;
