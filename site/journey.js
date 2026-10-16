@@ -138,6 +138,7 @@ function init() {
   // and after a short beat the traffic starts by itself. The hero plays on its own and has a pause button.
   const BEAT = 900;                                   // ms between arriving and the cars starting to move
   let heroPaused = reduced, lastRaw = 0, lastMoveT = -1e9, restSince = null, det = 0;
+  let driftTime = 0;
   const pauseBtn = $('pause');
   function paintPause() { pauseBtn.textContent = t(heroPaused ? 'btn_play' : 'btn_pause'); pauseBtn.setAttribute('aria-pressed', String(heroPaused)); }
   pauseBtn.addEventListener('click', () => { heroPaused = !heroPaused; paintPause(); });
@@ -164,7 +165,7 @@ function init() {
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
     if (!visible) { syncVideo(false); syncPip(false); return; }
     const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
-    ps += (raw - ps) * (1 - Math.exp(-dt * 7));
+    ps = reduced ? raw : ps + (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
     // is the visitor scrolling, and is the camera resting at a scenery (or at the hero)?
     const moved = Math.abs(raw - lastRaw) > 0.0004; lastRaw = raw;
@@ -174,7 +175,7 @@ function init() {
     const atStop = S.some((st, i) => ps >= st.a - (i === S.length - 1 ? 0.03 : 0.002) && ps <= st.b + 0.002);
     const resting = atStop && idle;
     if (resting) { if (restSince === null) restSince = now; } else restSince = null;
-    const run = inHero ? (!heroPaused && idle) : (resting && now - restSince > BEAT);       // frozen, then a beat, then moving
+    const run = !heroPaused && (inHero ? idle : (resting && now - restSince > BEAT));
     det += ((resting && !inHero ? 1 : 0) - det) * (1 - Math.exp(-dt * 6));                   // detection layers follow arrival
     if (run) time += dt;
     for (const j of J) j.step(run ? dt : 0);
@@ -182,8 +183,11 @@ function init() {
     const c = camAt(ps, m);
     // slow drift plus a little pointer parallax, strongest at the very top and gone after the first scroll
     const hw = reduced || m ? 0 : clamp(1 - ps / 0.06);
-    ptr.x += (ptr.tx - ptr.x) * (1 - Math.exp(-dt * 3)); ptr.y += (ptr.ty - ptr.y) * (1 - Math.exp(-dt * 3));
-    camera.position.set(c.pos[0] + (ptr.x * 2.6 + Math.sin(now / 3800) * 0.8) * hw, c.pos[1] + (-ptr.y * 0.9 + Math.sin(now / 5200) * 0.3) * hw, c.pos[2]);
+    if (!heroPaused) {
+      driftTime += dt;
+      ptr.x += (ptr.tx - ptr.x) * (1 - Math.exp(-dt * 3)); ptr.y += (ptr.ty - ptr.y) * (1 - Math.exp(-dt * 3));
+    }
+    camera.position.set(c.pos[0] + (ptr.x * 2.6 + Math.sin(driftTime / 3.8) * 0.8) * hw, c.pos[1] + (-ptr.y * 0.9 + Math.sin(driftTime / 5.2) * 0.3) * hw, c.pos[2]);
     camera.lookAt(c.look[0], c.look[1], c.look[2]);
     sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
 
@@ -207,11 +211,11 @@ function init() {
       buildHud(j);
     }
     $('hud').hidden = s < 1;
-    pauseBtn.hidden = s !== 0;                                                               // the hero's own pause control
+    pauseBtn.hidden = false; // One motion control for the entire demo.
     pip.hidden = s !== 0; syncPip(s === 0 && !heroPaused && !reduced);
     const isX = s >= 1 && J[focus].def.id === 'x';
     $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
-    syncVideo(isX && tab === 'video' && !reduced && atStop && idle);
+    syncVideo(isX && tab === 'video' && !heroPaused && !reduced && atStop && idle);
     $('view').textContent = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
     if (s >= 1) paintHud(J[focus]);
 

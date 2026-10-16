@@ -33,7 +33,7 @@ const T = {
     hud_hint: 'A>B: entra pela via A e sai pela via B. A contagem acontece na linha de saída.',
     hud_wait: 'Aguardando passagens…',
     jr_report_cta: 'Ver relatório de exemplo',
-    pip_lbl: 'Seu vídeo (exemplo)', pip_cap: 'Entrada: um vídeo comum de um cruzamento, com a detecção de veículos.',
+    pip_lbl: 'Seu vídeo (exemplo)', pip_cap: 'Vídeo de exemplo de um cruzamento, já com a detecção de veículos aplicada.',
     pip_aria: 'Vídeo de exemplo de uma via em X com detecção de veículos',
     hud_tab_mv: 'Movimentos', hud_tab_vid: 'Vídeo original',
     hud_vid_cap: 'Vídeo de exemplo de uma via em X. Os números do painel vêm da simulação 3D.',
@@ -115,7 +115,7 @@ const T = {
     hud_hint: 'A>B: enters on road A and leaves on road B. The count happens at the exit line.',
     hud_wait: 'Waiting for passages…',
     jr_report_cta: 'See a sample report',
-    pip_lbl: 'Your video (sample)', pip_cap: 'Input: an ordinary video of a junction, with vehicle detection.',
+    pip_lbl: 'Your video (sample)', pip_cap: 'Sample junction video, already showing vehicle detection applied.',
     pip_aria: 'Sample video of an X junction with vehicle detection',
     hud_tab_mv: 'Movements', hud_tab_vid: 'Original video',
     hud_vid_cap: 'Sample video of an X junction. The numbers in this panel come from the 3D simulation.',
@@ -307,6 +307,8 @@ function applyLang(l) {
   lang = l;
   try { localStorage.setItem('cv-lang', l); } catch (e) {}
   document.documentElement.lang = l === 'pt' ? 'pt-BR' : 'en';
+  // Keep the fallback copy localized even when the 3D module cannot start.
+  $('#jr-h').innerHTML = t('jr_h0'); $('#jr-p').textContent = t('jr_p0');
   document.title = l === 'pt' ? 'ContaVias · Contagem de veículos por vídeo' : 'ContaVias · Vehicle counting from video';
   $$('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); if (typeof v === 'string') el.textContent = v; });
   $$('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));

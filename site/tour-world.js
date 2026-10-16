@@ -190,9 +190,8 @@ export function createWorld(scene) {
       flatArrow(arrows, laneArrowMat, ix, iz, di, dj, 0.24, 1.5);               // inbound lane, toward the junction
       flatArrow(arrows, laneArrowMat, ox, oz, do_, dp, 0.24, 1.5);              // outbound lane, away from it
       const sp = new T.Sprite(badgeMat(LETTER[r])); const [bx, bz] = rot(0, 26); sp.position.set(bx, 3.4, bz); sp.renderOrder = 5; arrows.add(sp); sprites.push(sp);
-      // Movement ribbons exist for every junction. On X junctions they stay invisible until a vehicle is counted,
-      // then only the counted movement lights up (see layout), so the crossing never gets cluttered.
-      for (const m of [0, 1, 2]) {
+      // Keep X junctions free of crossing movement paths.
+      for (const m of (def.id === 'x' ? [] : [0, 1, 2])) {
         const to = (r + (m === 0 ? 2 : m === 1 ? 1 : 3)) % 4;
         if (!def.arms.includes(to)) continue;
         const car = { r, m }, end = m === 0 ? 106 : m === 1 ? 92 : 108, pts = [];
@@ -210,13 +209,6 @@ export function createWorld(scene) {
   const junctions = DEFS.map((def, di) => {
     const group = new T.Group(); group.position.x = def.x; scene.add(group);
     group.add(junctionStatic(def));
-    // One count line across the outbound lane of every arm: a vehicle is counted when it crosses the line of the road it leaves on.
-    const gateMats = {};
-    const gates = def.arms.map(r => {
-      const g = new T.Group(); g.rotation.y = r * Math.PI / 2; group.add(g);
-      const mat = new T.MeshBasicMaterial({ color: 0xe56b38, transparent: true, opacity: 0 }); gateMats[r] = mat;
-      return box(g, 8.8, 0.06, 0.26, mat, -5, 0.18, 20);
-    });
     const labels = roadLabels(group, def); labels.sprites.forEach(s => badges.push(s));
     const specs = def.types.map((type, i) => ({ type, length: DIMS[type].l, id: String(di * 100 + i + 1).padStart(3, '0'), r: def.arms[i % def.arms.length] }));
     const traffic = createTraffic(specs, def.arms, def.groups, 11 + di);
@@ -235,7 +227,7 @@ export function createWorld(scene) {
       return c;
     });
     const J = {
-      def, group, traffic, cars, gates, live, counts: {}, types: [0, 0, 0, 0, 0], total: 0, feed: [], acc: 0, time: 0, started: false,
+      def, group, traffic, cars, live, counts: {}, types: [0, 0, 0, 0, 0], total: 0, feed: [], acc: 0, time: 0, started: false,
       reset() { J.counts = {}; J.types = [0, 0, 0, 0, 0]; J.total = 0; J.feed = []; },     // counting starts when the visitor arrives
       step(dt) {
         J.acc += dt;
@@ -254,9 +246,6 @@ export function createWorld(scene) {
           const on = g.key === hot;
           g.mat.color.copy(on ? ORANGE : INK); g.mat.opacity = (on ? 0.95 : (def.id === 'x' ? 0 : 0.16)) * ov.gate;
         }
-        const exitLetter = hot ? hot.split('>')[1] : '';                               // the count line it just crossed flashes too
-        gates.forEach(g => { g.visible = ov.gate > 0.02; });
-        for (const r of def.arms) gateMats[r].opacity = (LETTER[r] === exitLetter ? 1 : 0.5) * ov.gate;
         live(traffic, time);
         for (const c of cars) {
           c.group.visible = c.active;

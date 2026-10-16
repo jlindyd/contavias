@@ -6,9 +6,9 @@
 <title>ContaVias · Contagem de veículos por vídeo</title>
 <meta name="description" content="Envie o vídeo do cruzamento e receba a contagem de veículos por movimento em até 48 h. Sem hardware, sem integração.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23263e3c'/><path d='M9 24l5-16M15 24l5-16M21 24l5-16' stroke='%23ff7a45' stroke-width='2.6' stroke-linecap='round'/></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Archivo:wght@500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="preload" href="fonts/archivo-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/geist-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="scrollcraft.css">
 <link rel="stylesheet" href="styles.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
@@ -42,8 +42,8 @@
       <div id="labels" aria-hidden="true"></div>
 
       <div class="copy">
-        <h1 id="jr-h"></h1>
-        <p id="jr-p"></p>
+        <h1 id="jr-h">Seu vídeo.<br>Cada veículo <em>contado.</em></h1>
+        <p id="jr-p">Envie o vídeo do cruzamento. A IA conta e classifica cada veículo por movimento. Sem hardware.</p>
         <div class="copy__cta" id="jr-cta">
           <a class="cta" href="#start" data-i18n="cta">Iniciar contagem</a>
           <span data-i18n="jr_note">Resultado em até 48 h*</span>
@@ -58,7 +58,7 @@
         <video id="pip-video" muted loop playsinline preload="auto" poster="assets/via-x1-poster.jpg" aria-label="Vídeo de exemplo de uma via em X com detecção de veículos">
           <source src="assets/via-x1.mp4" type="video/mp4">
         </video>
-        <figcaption><span class="lbl" data-i18n="pip_lbl">Seu vídeo (exemplo)</span><small data-i18n="pip_cap">Entrada: um vídeo comum de um cruzamento, com a detecção de veículos.</small></figcaption>
+        <figcaption><span class="lbl" data-i18n="pip_lbl">Seu vídeo (exemplo)</span><small data-i18n="pip_cap">Vídeo de exemplo de um cruzamento, já com a detecção de veículos aplicada.</small></figcaption>
       </figure>
 
       <aside class="hud" id="hud" hidden>
