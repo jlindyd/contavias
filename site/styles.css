@@ -73,9 +73,10 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 /* ---------- journey (hero + counting monitor) ---------- */
 .journey { background: var(--sc-canvas); }
 .journey canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #edf0eb 0%, #edf0ebe6 12%, #edf0eb8c 26%, #edf0eb00 40%); }
-.copy { position: absolute; left: var(--sc-gutter); top: 22%; width: min(36%, 31rem); pointer-events: none; }
-.copy h1 { font: 600 clamp(2.4rem, 4.8vw, 4.75rem)/1.04 var(--sc-font-display); letter-spacing: -0.04em; margin: 0 0 1.25rem; text-wrap: balance; }
+/* a soft fog only behind the copy block, so vehicles elsewhere on the left stay crisp and the road letters stay visible */
+.wash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 30% 32% at 21% 44%, #edf0ebf4 0%, #edf0ebd2 50%, #edf0eb00 100%), linear-gradient(90deg, #edf0ebd0 0%, #edf0eb00 8%); }
+.copy { position: absolute; left: var(--sc-gutter); top: 22%; width: min(46%, 38rem); pointer-events: none; }
+.copy h1 { font: 600 clamp(2.2rem, 3.9vw, 3.9rem)/1.05 var(--sc-font-display); letter-spacing: -0.04em; margin: 0 0 1.25rem; text-wrap: balance; }
 .copy h1 em { font-style: normal; color: var(--sc-accent); }
 .copy p { margin: 0; max-width: 27rem; font-size: clamp(0.95rem, 1.2vw, 1.1rem); line-height: 1.6; color: var(--sc-ink-soft); text-wrap: pretty; }
 .copy__cta { display: flex; align-items: center; gap: 0.9rem 1.25rem; flex-wrap: wrap; margin-top: 1.75rem; pointer-events: auto; }
@@ -89,6 +90,11 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 }
 .lbl { font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-ink-soft); }
 .hud h2 { font: 600 1.5rem/1.1 var(--sc-font-display); letter-spacing: -0.025em; margin: 0.35rem 0 0.9rem; }
+.pip { position: absolute; z-index: 2; right: var(--sc-gutter); top: 128px; width: min(19rem, 27vw); margin: 0; padding: 0.65rem; background: color-mix(in oklab, var(--sc-surface) 93%, transparent); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45); backdrop-filter: blur(8px); }
+.pip video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #1b2426; }
+.pip figcaption { display: grid; gap: 0.3rem; margin-top: 0.65rem; }
+.pip small { font-size: 0.75rem; line-height: 1.4; color: var(--sc-ink-soft); }
+.feed .wait { color: var(--sc-ink-soft); }
 .hud__total { display: flex; align-items: baseline; gap: 0.55rem; color: var(--sc-ink-soft); font-size: 0.875rem; }
 .hud__total .num { font: 600 2.3rem/1 var(--mono); letter-spacing: -0.04em; color: var(--sc-ink); }
 .mx { border-collapse: separate; border-spacing: 3px; font: 500 0.75rem var(--mono); margin: 0.85rem 0 0 -3px; }
@@ -159,6 +165,10 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   .bar__cta { min-height: 38px; padding: 0 0.8rem; font-size: 0.8125rem; }
   .wash { background: linear-gradient(#edf0eb 10%, #edf0ebee 28%, #edf0eb00 55%); }
   .copy { left: 6%; top: 20%; width: 88%; }
+  .pip { top: auto; bottom: 62px; right: 5%; width: 9.5rem; padding: 0.35rem; }
+  .pip figcaption { margin-top: 0.35rem; }
+  .pip figcaption small { display: none; }
+  .pip .lbl { font-size: 0.5625rem; }
   .steps { top: calc(var(--bar-h) + 2px); left: 5%; right: 5%; gap: 0.35rem; flex-wrap: nowrap; }
   .steps__label { display: none; }
   .steps button { flex: 0 0 auto; padding: 0 0.35rem; min-height: 40px; transition: padding 200ms var(--sc-ease-out); }

@@ -31,7 +31,10 @@ const T = {
     jr_view3d: 'VISTA 3D', chapters_aria: 'Etapas da contagem',
     hud_total: 'veículos contados', hud_live: 'Contagem ao vivo', hud_last: 'Últimas passagens',
     hud_hint: 'A>B: entra pela via A e sai pela via B. A contagem acontece na linha de saída.',
-    hud_invite: 'Veja como cada veículo é contado.',
+    hud_wait: 'Aguardando passagens…',
+    jr_report_cta: 'Ver relatório de exemplo',
+    pip_lbl: 'Seu vídeo (exemplo)', pip_cap: 'Entrada: um vídeo comum de um cruzamento, com a detecção de veículos.',
+    pip_aria: 'Vídeo de exemplo de uma via em X com detecção de veículos',
     hud_tab_mv: 'Movimentos', hud_tab_vid: 'Vídeo original',
     hud_vid_cap: 'Vídeo de exemplo de uma via em X. Os números do painel vêm da simulação 3D.',
     hud_vid_aria: 'Vídeo de exemplo de uma via em X com detecção de veículos',
@@ -110,7 +113,10 @@ const T = {
     jr_view3d: '3D VIEW', chapters_aria: 'Counting steps',
     hud_total: 'vehicles counted', hud_live: 'Live count', hud_last: 'Latest passages',
     hud_hint: 'A>B: enters on road A and leaves on road B. The count happens at the exit line.',
-    hud_invite: 'See how each vehicle is counted.',
+    hud_wait: 'Waiting for passages…',
+    jr_report_cta: 'See a sample report',
+    pip_lbl: 'Your video (sample)', pip_cap: 'Input: an ordinary video of a junction, with vehicle detection.',
+    pip_aria: 'Sample video of an X junction with vehicle detection',
     hud_tab_mv: 'Movements', hud_tab_vid: 'Original video',
     hud_vid_cap: 'Sample video of an X junction. The numbers in this panel come from the 3D simulation.',
     hud_vid_aria: 'Sample video of an X junction with vehicle detection',
@@ -304,7 +310,7 @@ function applyLang(l) {
   document.title = l === 'pt' ? 'ContaVias · Contagem de veículos por vídeo' : 'ContaVias · Vehicle counting from video';
   $$('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); if (typeof v === 'string') el.textContent = v; });
   $$('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
-  $('#hud-video').setAttribute('aria-label', t('hud_vid_aria'));
+  $('#hud-video').setAttribute('aria-label', t('hud_vid_aria')); $('#pip-video').setAttribute('aria-label', t('pip_aria'));
   $$('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
   $('#special-wa').href = `https://wa.me/${WA}?text=${encodeURIComponent(t('wa_special'))}`;
   paintCompare(); paintFaq(); paintForm(); paintPricing(); paintReport();

@@ -43,7 +43,7 @@ function init() {
   // Every view is a perspective camera at pole height or a little above: what a counting video really looks like.
   const view = (jx, dx, y, dz, lx, ly, lz, m) => { const k = m ? 1.5 : 1; return { look: [jx + lx, ly, lz], pos: [jx + lx + dx * k, y * (m ? 1.3 : 1), lz + dz * k] }; };
   const stops = m => [
-    { a: 0, b: 0.06, ...view(DEFS[0].x, 44, 59, 51, -15, 0, 0, m) },        // hero: wide oblique over the first junction
+    { a: 0, b: 0.06, ...view(DEFS[0].x, 32, 44, 46, -12, 0.5, 0, m) },      // hero: a lower, closer oblique so the vehicles have detail
     { a: 0.15, b: 0.25, ...view(DEFS[0].x, 36, 30, 44, -5, 1.5, 0, m) },     // Detectar
     { a: 0.35, b: 0.46, ...view(DEFS[1].x, -38, 24, 38, 3, 1.2, 2, m) },     // Classificar, along the single road
     { a: 0.56, b: 0.67, ...view(DEFS[2].x, 40, 34, 42, -2, 1, -4, m) },      // Rastrear, T junction
@@ -75,7 +75,7 @@ function init() {
   function paintCopy() {
     const s = Math.max(0, stage);
     $('jr-h').innerHTML = t('jr_h' + s); $('jr-p').textContent = t('jr_p' + s);
-    $('jr-cta').hidden = s > 0;
+    $('jr-cta').hidden = s > 0; $('jr-end').hidden = s !== 5;           // start button in the hero, report buttons on the last step
     chapters.forEach((b, i) => { const on = s === i + 1; b.classList.toggle('active', on); b.classList.toggle('done', s > i + 1); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   }
   const lettersOf = j => ['A', 'B', 'C', 'D'].filter(l => j.def.arms.some(a => LETTER[a] === l));
@@ -92,7 +92,9 @@ function init() {
       hudSig = sig; $('hud-total').textContent = j.total;
       for (const td of $('hud-mx').querySelectorAll('[data-mv]')) td.textContent = j.counts[td.dataset.mv] || 0;
       for (const dd of $('hud-cls').querySelectorAll('[data-ty]')) dd.textContent = j.types[dd.dataset.ty];
-      $('hud-feed').innerHTML = j.feed.slice(0, 3).map(f => `<li><b>+1</b> ${t('vt' + f.type)} <span>${f.mv.replace('>', ' → ')}</span></li>`).join('');
+      $('hud-feed').innerHTML = j.feed.length
+        ? j.feed.slice(0, 3).map(f => `<li><b>+1</b> ${t('vt' + f.type)} <span>${f.mv.replace('>', ' → ')}</span></li>`).join('')
+        : `<li class="wait">${t('hud_wait')}</li>`;
     }
     const live = j.feed[0] && j.time - j.feed[0].t < 0.9 ? j.feed[0].mv : '';
     for (const td of $('hud-mx').querySelectorAll('.hit')) if (td.dataset.mv !== live) td.classList.remove('hit');
@@ -122,6 +124,15 @@ function init() {
   const labelFor = c => { let e = labelEls.get(c); if (!e) { e = document.createElement('div'); e.className = 'vehicle-label'; e.style.setProperty('--color', '#' + vehicleTypes[classOf(c.type)].color.toString(16).padStart(6, '0')); $('labels').append(e); labelEls.set(c, e); } return e; };
   const v3 = new T.Vector3();
 
+  // the hero's sample video, shown only on the hero; and a gentle pointer drift for depth (desktop, not reduced motion)
+  const pip = $('pip'), pipVideo = $('pip-video'), ptr = { x: 0, y: 0, tx: 0, ty: 0 };
+  let pipPlaying = false;
+  function syncPip(want) {
+    if (want && !pipPlaying) { pipPlaying = true; pipVideo.play().catch(() => { pipPlaying = false; }); }
+    else if (!want && pipPlaying) { pipPlaying = false; pipVideo.pause(); }
+  }
+  addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; ptr.tx = (e.clientX / innerWidth - 0.5) * 2; ptr.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
+
   /* ---------- motion ---------- */
   // Everything is frozen while the visitor scrolls. On arriving at a junction the detection layers fade in,
   // and after a short beat the traffic starts by itself. The hero plays on its own and has a pause button.
@@ -137,7 +148,7 @@ function init() {
     width = innerWidth; height = innerHeight; renderer.setSize(width, height, false);
     camera.aspect = width / height;
     // on wide screens, push the scene toward the free area between the copy and the report panel
-    if (width >= 900) camera.setViewOffset(width, height, -width * 0.06, 0, width, height); else camera.clearViewOffset();
+    if (width >= 900) camera.setViewOffset(width, height, -width * 0.1, 0, width, height); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     world.setBadgeScale(height);
   }
@@ -151,7 +162,7 @@ function init() {
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
-    if (!visible) { syncVideo(false); return; }
+    if (!visible) { syncVideo(false); syncPip(false); return; }
     const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
     ps += (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
@@ -169,7 +180,11 @@ function init() {
     for (const j of J) j.step(run ? dt : 0);
 
     const c = camAt(ps, m);
-    camera.position.set(c.pos[0], c.pos[1], c.pos[2]); camera.lookAt(c.look[0], c.look[1], c.look[2]);
+    // slow drift plus a little pointer parallax, strongest at the very top and gone after the first scroll
+    const hw = reduced || m ? 0 : clamp(1 - ps / 0.06);
+    ptr.x += (ptr.tx - ptr.x) * (1 - Math.exp(-dt * 3)); ptr.y += (ptr.ty - ptr.y) * (1 - Math.exp(-dt * 3));
+    camera.position.set(c.pos[0] + (ptr.x * 2.6 + Math.sin(now / 3800) * 0.8) * hw, c.pos[1] + (-ptr.y * 0.9 + Math.sin(now / 5200) * 0.3) * hw, c.pos[2]);
+    camera.lookAt(c.look[0], c.look[1], c.look[2]);
     sun.position.set(c.look[0] - 25, 65, 25); sun.target.position.set(c.look[0], 0, 0); sun.target.updateMatrixWorld();
 
     // one layer per step: boxes, then classes, then trails, then the count gates
@@ -193,6 +208,7 @@ function init() {
     }
     $('hud').hidden = s < 1;
     pauseBtn.hidden = s !== 0;                                                               // the hero's own pause control
+    pip.hidden = s !== 0; syncPip(s === 0 && !heroPaused && !reduced);
     const isX = s >= 1 && J[focus].def.id === 'x';
     $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
     syncVideo(isX && tab === 'video' && !reduced && atStop && idle);
