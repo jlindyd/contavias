@@ -51,7 +51,7 @@ function render() {
   $('.copy').hidden = i >= 5; $('#hud').hidden = i === 0 || i >= 5; $('#labels').hidden = i >= 5;
   const s = Math.min(i, 5);
   $('#jr-h').innerHTML = window.CV.t('jr_h' + s); $('#jr-p').textContent = window.CV.t('jr_p' + s);
-  $('#jr-cta').hidden = i !== 0; $('#jr-end').hidden = true;
+  $('#jr-end').hidden = true;
   document.querySelectorAll('[data-stop]').forEach((b, n) => {
     const on = i === n + 1;
     b.classList.toggle('active', on); b.classList.toggle('done', i > n + 1 && i <= 5);

@@ -96,8 +96,8 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .lbl { font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-ink-soft); }
 .hud h2 { font: 600 1.5rem/1.1 var(--sc-font-display); letter-spacing: -0.025em; margin: 0.35rem 0 0.9rem; }
 /* a compact thumbnail beside its caption: the clips are only 352 px wide, so they look best small, and the card stays short */
-.pip { position: relative; display: flex; align-items: center; gap: 0.9rem; width: 100%; margin: 1.25rem 0 0; padding: 0; }
-.pip video { display: block; flex: none; width: 12.5rem; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #1b2426; }
+.pip { position: relative; display: block; width: 100%; margin: 1.25rem 0 0; padding: 0; }
+.pip video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #1b2426; }
 .pip figcaption { display: grid; gap: 0.3rem; margin: 0; min-width: 0; }
 .pip small { font-size: 0.75rem; line-height: 1.4; color: var(--sc-ink-soft); }
 .feed .wait { color: var(--sc-ink-soft); }
