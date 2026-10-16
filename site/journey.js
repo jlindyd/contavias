@@ -109,26 +109,8 @@ function init() {
     for (const td of $('hud-mx').querySelectorAll('.hit')) if (td.dataset.mv !== live) td.classList.remove('hit');
     if (live) { const td = $('hud-mx').querySelector(`[data-mv="${live}"]`); if (td) td.classList.add('hit'); }
   }
-  // Panel tabs: the movement table, or the sample video (only on the X junction scenes, where the footage matches).
-  const video = $('hud-video'), tabBtns = [...document.querySelectorAll('#hud-tabs [data-tab]')];
-  let tab = 'mv', vidPlaying = false;
-  function setTab(name) {
-    tab = name;
-    tabBtns.forEach(b => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
-    $('pane-mv').hidden = name !== 'mv'; $('pane-video').hidden = name !== 'video';
-  }
-  tabBtns.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
-  $('hud-tabs').addEventListener('keydown', e => {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-    e.preventDefault(); const n = tab === 'mv' ? 'video' : 'mv'; setTab(n); $('tab-' + n).focus();
-  });
-  // The sample clip is a separate download, started only when a video is about to play, and shared by both players.
+  // Only the active junction's clip is downloaded, using one player in the copy card.
   const loadSrc = v => { if (!v.src && v.dataset.src) { v.src = v.dataset.src; v.load(); } };
-  function syncVideo(want) {
-    if (want) loadSrc(video);
-    if (want && !vidPlaying) { vidPlaying = true; video.play().catch(() => { vidPlaying = false; }); }
-    else if (!want && vidPlaying) { vidPlaying = false; video.pause(); }
-  }
   addEventListener('cv:lang', () => { stage = -1; focus = -1; hudSig = ''; paintPause(); dirty = true; });
 
   /* ---------- labels ---------- */
@@ -136,13 +118,32 @@ function init() {
   const labelFor = c => { let e = labelEls.get(c); if (!e) { e = document.createElement('div'); e.className = 'vehicle-label'; e.style.setProperty('--color', '#' + vehicleTypes[classOf(c.type)].color.toString(16).padStart(6, '0')); $('labels').append(e); labelEls.set(c, e); } return e; };
   const v3 = new T.Vector3();
 
-  // the hero's sample video, shown only on the hero; and a gentle pointer drift for depth (desktop, not reduced motion)
-  const pip = $('pip'), pipVideo = $('pip-video'), ptr = { x: 0, y: 0, tx: 0, ty: 0 };
+  // Match real footage to each scenery, independently of the simulated counts.
+  const pipVideo = $('pip-video'), ptr = { x: 0, y: 0, tx: 0, ty: 0 };
+  const samples = [
+    ['via-x1-small.mp4', 'via-x1-poster.jpg'],
+    ['via-simples-small.mp4', 'single-poster.jpg'],
+    ['via-t-small.mp4', 't-poster.jpg'],
+    ['via-urban-small.mp4', 'urban-x-poster.jpg']
+  ];
+  let sample = -1;
+  function selectSample(index) {
+    if (sample === index) return;
+    sample = index;
+    syncPip(false);
+    pipVideo.removeAttribute('src');
+    pipVideo.dataset.src = 'assets/' + samples[index][0];
+    pipVideo.poster = 'assets/' + samples[index][1];
+    pipVideo.load();
+  }
   let pipPlaying = false;
   function syncPip(want) {
+    const mobileVideo = innerWidth <= 700;
+    want = want && !mobileVideo;
     if (want) loadSrc(pipVideo);
     if (want && !pipPlaying) { pipPlaying = true; pipVideo.play().catch(() => { pipPlaying = false; }); }
     else if (!want && pipPlaying) { pipPlaying = false; pipVideo.pause(); }
+    if (mobileVideo && pipVideo.hasAttribute('src')) { pipVideo.removeAttribute('src'); pipVideo.load(); }
   }
   addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; ptr.tx = (e.clientX / innerWidth - 0.5) * 2; ptr.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
 
@@ -167,23 +168,36 @@ function init() {
     world.setBadgeScale(height); dirty = true;
   }
   addEventListener('resize', resize); resize();
-  let visible = true;
-  new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe(demo);
+  let visible = true, frameId = 0;
+  function wake() {
+    if (!visible || document.hidden) {
+      cancelAnimationFrame(frameId); frameId = 0;
+      syncPip(false);
+      return;
+    }
+    if (!frameId) { last = performance.now(); dirty = true; frameId = requestAnimationFrame(frame); }
+  }
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; wake(); }, { threshold: 0 }).observe(demo);
+  document.addEventListener('visibilitychange', wake);
 
   /* ---------- loop ---------- */
   // Performance: the scene is only redrawn when something changed (the camera, the layers, the traffic or the
   // hero drift). While frozen at a junction the GPU is idle. Traffic runs at a capped frame rate, resolution
   // drops by itself on machines that cannot keep up, and only the junction on screen is simulated.
-  let last = performance.now(), time = 0, ps = 0, lastRenderT = 0, lastKey = '', emaMs = 16, slowRuns = 0, fastRuns = 0, shadowTick = 0;
+  let last = performance.now(), time = 0, ps = 0, lastRenderT = 0, lastKey = '', emaMs = 16, slowRuns = 0, fastRuns = 0;
+  let lastShadowT = -Infinity, lastShadowX = NaN;
+  const readySeen = new Set();
   let pr = renderer.getPixelRatio(), fpsCap = lite ? 24 : 45; const prMax = pr, fpsMax = fpsCap;
   function setPR(v) { pr = v; renderer.setPixelRatio(pr); renderer.setSize(width, height, false); dirty = true; }
   const ov = { box: 0, cls: 0, trail: 0, trailBoost: 0, gate: 0 };
   renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
   window.__cvInfo = { renderer: renderer.info, lite, gpuName };                      // read-only diagnostics
   function frame(now) {
-    requestAnimationFrame(frame);
+    frameId = 0;
+    if (!visible || document.hidden) { syncPip(false); return; }
+    frameId = requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
-    if (!visible) { syncVideo(false); syncPip(false); return; }
+    if (!visible) { syncPip(false); return; }
     const raw = clamp(parseFloat(demo.style.getPropertyValue('--sc-p')) || 0);
     ps = reduced ? raw : ps + (raw - ps) * (1 - Math.exp(-dt * 7));
     const m = width < 700;
@@ -209,7 +223,11 @@ function init() {
     // only the junctions near the camera exist for this frame, and only those are simulated
     const near = J.filter(j => Math.abs(c.look[0] - j.def.x) < 175);
     for (const j of J) j.group.visible = near.includes(j);
-    if (run) for (const j of near) { j.ensureWarm(); j.step(dt); }
+    for (const j of near) {
+      j.ensureWarm();
+      if (j.ready && !readySeen.has(j)) { readySeen.add(j); dirty = true; }
+      if (run && j.ready) { j.step(dt); j.animationDt += dt; }
+    }
 
     // did anything visible change since the last drawn frame?
     const key = ps.toFixed(4) + '|' + det.toFixed(3) + '|' + (hw > 0.01 ? ptr.x.toFixed(2) + ptr.y.toFixed(2) + Math.floor(driftTime * 24) : '') + '|' + pr;
@@ -225,7 +243,9 @@ function init() {
       // every layer is multiplied by `det`, so boxes, labels, trails and gates only show while the camera rests at a junction
       ov.box = smooth((ps - 0.1) / 0.05) * det; ov.trail = ov.box; ov.cls = smooth((ps - 0.31) / 0.05) * det; ov.trailBoost = smooth((ps - 0.5) / 0.05) * det; ov.gate = smooth((ps - 0.7) / 0.05) * det;
       world.setOverlays(ov);
-      for (const j of near) j.layout(ov, time, run ? dt : 0);
+      for (const j of near) {
+        if (j.ready) { j.layout(ov, time, j.animationDt); j.animationDt = 0; }
+      }
     }
 
     const s = stageOf(ps);
@@ -236,16 +256,14 @@ function init() {
       const j = J[f];
       if (s > 0 && !j.started) { j.started = true; j.reset(); }                // each scenery starts counting when you arrive
       buildHud(j);
+      selectSample(f);
     }
     $('hud').hidden = s < 1;
     pauseBtn.hidden = false; // One motion control for the entire demo.
-    pip.hidden = s !== 0; syncPip(s === 0 && !heroPaused && !reduced);
-    const isX = s >= 1 && J[focus].def.id === 'x';
-    $('hud-tabs').hidden = !isX; if (!isX && tab !== 'mv') setTab('mv');
-    syncVideo(isX && tab === 'video' && !heroPaused && !reduced && atStop && idle);
+    syncPip(!heroPaused && !reduced && atStop && idle);
     const viewText = s < 1 ? t('jr_view3d') : `${t('jr_view3d')} · ${t('t_' + J[focus].def.id)}`;
     if ($('view').textContent !== viewText) $('view').textContent = viewText;
-    if (s >= 1) paintHud(J[focus]);
+    if (s >= 1 && J[focus].ready) paintHud(J[focus]);
 
     if (!draw) return;
 
@@ -257,7 +275,7 @@ function init() {
     for (const [car, el] of labelEls) if (!lj.cars.includes(car)) el.hidden = true;
     for (const car of lj.cars) {
       const el = labelFor(car), flash = ov.gate > 0.5 && lj.time - car.flash < 1.25;
-      if (!car.active || ov.box < 0.5 || shown >= (m ? 4 : 9) || !lj.group.visible) { el.hidden = true; continue; }
+      if (!lj.ready || !car.active || ov.box < 0.5 || shown >= (m ? 4 : 9) || !lj.group.visible) { el.hidden = true; continue; }
       car.group.getWorldPosition(v3); v3.y += car.h + 1; v3.project(camera);
       const x = (v3.x * 0.5 + 0.5) * width, y = (-v3.y * 0.5 + 0.5) * height;
       if (!(v3.z < 1 && x > x0 && x < x1 && y > y0 && y < y1)) { el.hidden = true; continue; }
@@ -269,7 +287,10 @@ function init() {
     }
 
     // shadows follow the camera and the traffic, but not on every single frame
-    if (key !== lastKey || dirty || (run && ++shadowTick % 2 === 0)) renderer.shadowMap.needsUpdate = true;
+    if (dirty || Math.abs(c.look[0] - lastShadowX) > 1 || !Number.isFinite(lastShadowX) || (run && now - lastShadowT >= 1000 / 15)) {
+      renderer.shadowMap.needsUpdate = true;
+      lastShadowT = now; lastShadowX = c.look[0];
+    }
     renderer.render(scene, camera);
     const frameMs = now - lastRenderT;
     lastRenderT = now; lastKey = key; dirty = false;          // must come before the adaptive step: changing the resolution clears the canvas and marks it dirty again
@@ -289,5 +310,6 @@ function init() {
   // wake the other junctions up gradually after load, so nothing stalls during the first scroll
   const whenIdle = window.requestIdleCallback ? f => requestIdleCallback(f, { timeout: 6000 }) : f => setTimeout(f, 800);
   [1, 2, 3].forEach((i, k) => setTimeout(() => whenIdle(() => J[i].ensureWarm()), 2500 + k * 1200));
-  requestAnimationFrame(frame);
+  J[0].ensureWarm();
+  wake();
 }

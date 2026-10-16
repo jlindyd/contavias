@@ -1232,7 +1232,7 @@
 
     layout();
     initPointer();
-    scTickFrame = requestAnimationFrame(tick);
+    if (playheads.length) scTickFrame = requestAnimationFrame(tick);
     document.documentElement.classList.add('sc-ready');
 
     var api = { layout: layout, read: read, acts: acts, worlds: worlds, clips: playheads, lerp: LERP };

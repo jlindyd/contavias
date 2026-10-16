@@ -77,9 +77,9 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 .wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #edf0ebd0 0%, #edf0eb00 8%); }
 /* the copy sits on a frosted card, so traffic passing behind it never fights the text */
 .copy {
-  position: absolute; left: calc(var(--sc-gutter) - 1.5rem); top: calc(22% - 1.5rem); width: min(46%, 38rem); box-sizing: border-box; padding: 1.5rem 1.5rem 1.6rem;
+  position: absolute; left: calc(var(--sc-gutter) - 1.5rem); top: clamp(124px, 16vh, 160px); width: min(40%, 34rem); box-sizing: border-box; padding: 1.5rem 1.5rem 1.6rem; max-height: calc(100svh - 200px); overflow-y: auto;
   background: color-mix(in oklab, var(--sc-surface) 86%, transparent);   /* no backdrop blur: blurring a live 3D canvas every frame is very expensive on laptop graphics */
-  border: 1px solid color-mix(in oklab, var(--sc-ink) 8%, transparent); border-radius: 18px; box-shadow: 0 24px 50px -34px rgba(36, 50, 52, 0.45); pointer-events: none;
+  border: 1px solid color-mix(in oklab, var(--sc-ink) 8%, transparent); border-radius: 18px; box-shadow: 0 24px 50px -34px rgba(36, 50, 52, 0.45); pointer-events: auto;
 }
 .copy h1 { font: 600 clamp(2.2rem, 3.9vw, 3.9rem)/1.05 var(--sc-font-display); letter-spacing: -0.04em; margin: 0 0 1.25rem; text-wrap: balance; }
 .copy h1 em { font-style: normal; color: var(--sc-accent); }
@@ -95,9 +95,10 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
 }
 .lbl { font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-ink-soft); }
 .hud h2 { font: 600 1.5rem/1.1 var(--sc-font-display); letter-spacing: -0.025em; margin: 0.35rem 0 0.9rem; }
-.pip { position: absolute; z-index: 2; right: var(--sc-gutter); top: 128px; width: min(19rem, 27vw); margin: 0; padding: 0.65rem; background: color-mix(in oklab, var(--sc-surface) 93%, transparent); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 22px 44px -26px rgba(36, 50, 52, 0.45); }
-.pip video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #1b2426; }
-.pip figcaption { display: grid; gap: 0.3rem; margin-top: 0.65rem; }
+/* a compact thumbnail beside its caption: the clips are only 352 px wide, so they look best small, and the card stays short */
+.pip { position: relative; display: flex; align-items: center; gap: 0.9rem; width: 100%; margin: 1.25rem 0 0; padding: 0; }
+.pip video { display: block; flex: none; width: 12.5rem; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #1b2426; }
+.pip figcaption { display: grid; gap: 0.3rem; margin: 0; min-width: 0; }
 .pip small { font-size: 0.75rem; line-height: 1.4; color: var(--sc-ink-soft); }
 .feed .wait { color: var(--sc-ink-soft); }
 .hud__total { display: flex; align-items: baseline; gap: 0.55rem; color: var(--sc-ink-soft); font-size: 0.875rem; }
@@ -169,8 +170,9 @@ body { font-family: var(--sc-font-text); background: var(--sc-canvas); color: va
   .bar__mark { font-size: 1.15rem; }
   .bar__cta { min-height: 38px; padding: 0 0.8rem; font-size: 0.8125rem; }
   .wash { background: linear-gradient(#edf0ebe6 0%, #edf0eb00 28%); }
-  .copy { left: 4%; top: calc(19% - 0.5rem); width: 92%; padding: 1rem 1.1rem 1.15rem; border-radius: 14px; }
-  .pip { top: auto; bottom: 62px; right: 5%; width: 9.5rem; padding: 0.35rem; }
+  .copy { left: 4%; top: 112px; width: 92%; padding: 1rem 1.1rem 1.15rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; max-height: calc(100svh - 280px); }
+  .pip { display: none; }
+  .pip video { max-height: 15svh; }
   .pip figcaption { margin-top: 0.35rem; }
   .pip figcaption small { display: none; }
   .pip .lbl { font-size: 0.5625rem; }

@@ -291,13 +291,26 @@ export function createWorld(scene) {
         }
       }
     };
-    // Warm up so traffic is already flowing. The hero junction does it now (a short pause at load); the others
-    // are warmed gradually after the first frame, or the first time they are simulated (see journey.js).
+    // Yield between small batches, including for the hero. Never fast-forward a whole junction
+    // inside initialization or an animation frame when a visitor scrolls here early.
     performance.mark('cv-j' + di + '-cars-end');
-    const warm = n => { for (let i = 0; i < n; i++) J.step(1 / 60); J.reset(); };
-    let warmed = false;
-    J.ensureWarm = () => { if (!warmed) { warmed = true; warm(60 * 15); } };
-    if (di === 0) { warmed = true; warm(60 * 12); }
+    let remaining = 60 * (di === 0 ? 12 : 15), warming = false;
+    J.ready = false;
+    J.animationDt = 0;
+    J.ensureWarm = () => {
+      if (warming || J.ready) return;
+      warming = true;
+      function batch() {
+        if (document.hidden) { setTimeout(batch, 250); return; }
+        const end = performance.now() + 2;
+        let steps = 0;
+        do { J.step(1 / 60); remaining--; steps++; }
+        while (remaining > 0 && steps < 30 && performance.now() < end);
+        if (remaining > 0) setTimeout(batch, 0);
+        else { J.reset(); J.ready = true; }
+      }
+      setTimeout(batch, 0);
+    };
     return J;
   });
 
