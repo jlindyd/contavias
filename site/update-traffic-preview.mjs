@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const p=new URL('./hero-preview.js',import.meta.url);let s=fs.readFileSync(p,'utf8');
+s=s.replace("const reduced=", "import {createTraffic, tick, pose} from './hero-traffic.js';\nimport {createStreetlife} from './hero-streetlife.js';\nconst reduced=");
+s=s.replace("const type=i%5,r=i%4,turn=i%3===0,path=route(r,turn),model=makeVehicle(type),group=model.group,length=model.l;", "const type=[0,1,0,2,0,1,3,0,1,0,2,4,0,1,0,0][i],r=i%4,turn=i%3===0,model=makeVehicle(type),group=model.group,length=model.l;\nconst shape={r,turn};const path={getPointAt(u){const p=pose(shape,u*(turn?126+5*Math.PI:156));return new T.Vector3(p.x,.35,p.z);}};");
+s=s.replace('i<25','i<16');
+s=s.replace('const marker=new T.Vector3()', 'const traffic=createTraffic(cars);const updateStreetlife=createStreetlife(scene);let accumulator=0;\nconst marker=new T.Vector3()');
+s=s.replace('if(!paused)time+=dt;', "if(!paused){time+=dt;accumulator+=dt;while(accumulator>=1/60){tick(traffic,1/60);for(const event of traffic.events)event.flash=time;accumulator-=1/60;}}updateStreetlife(traffic,time);");
+const begin=s.indexOf('for(const car of cars){const u=');const end=s.indexOf('car.trail.visible=',begin);
+if(begin<0||end<0)throw Error('Simulation block not found');
+s=s.slice(0,begin)+`for(const car of traffic.cars){car.group.visible=car.active;if(!car.active){car.label.hidden=true;car.trail.visible=false;continue;}const total=car.turn?126+5*Math.PI:156,u=clamp(car.s/total),point=pose(car),p=new T.Vector3(point.x,.35,point.z);car.group.position.copy(p);car.group.rotation.y=point.angle;car.outline.visible=current>=0;const flash=current>=3&&time-car.flash<1.25;
+`+s.slice(end);
+fs.writeFileSync(p,s);
